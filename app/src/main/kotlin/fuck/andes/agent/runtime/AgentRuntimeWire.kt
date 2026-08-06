@@ -86,6 +86,7 @@ internal object AgentRuntimeWire {
     private const val KEY_EXTRA_BODY_JSON = "extra_body_json"
     private const val KEY_CUSTOM_HEADERS_JSON = "custom_headers_json"
     private const val KEY_CUSTOM_BODY_JSON = "custom_body_json"
+    private const val KEY_MODEL_SUPPORTS_VISION = "model_supports_vision"
     private const val KEY_IMAGES = "images"
     private const val KEY_HISTORY = "history"
     private const val KEY_CONTENT_JSON = "content_json"
@@ -242,6 +243,7 @@ internal object AgentRuntimeWire {
         putBoolean(KEY_DEVICE_SENSITIVE_READ_TOOLS, request.config.deviceSensitiveReadTools)
         putBoolean(KEY_DEVICE_SENSITIVE_ACTION_TOOLS, request.config.deviceSensitiveActionTools)
         putBoolean(KEY_THINKING_ENABLED, request.config.effectiveReasoningEffort.enablesReasoning)
+        putBoolean(KEY_MODEL_SUPPORTS_VISION, request.config.modelSupportsVision)
         putString(KEY_REASONING_EFFORT, request.config.effectiveReasoningEffort.wireValue)
         request.config.reasoningCapabilities?.let {
             putString(KEY_REASONING_CAPABILITIES_JSON, json.encodeToString(it))
@@ -377,7 +379,8 @@ internal object AgentRuntimeWire {
                 ),
                 extraBodyJson = bundle.getString(KEY_EXTRA_BODY_JSON).orEmpty(),
                 customHeaders = decodeCustomHeaders(bundle.getString(KEY_CUSTOM_HEADERS_JSON)),
-                customBody = decodeCustomBody(bundle.getString(KEY_CUSTOM_BODY_JSON))
+                customBody = decodeCustomBody(bundle.getString(KEY_CUSTOM_BODY_JSON)),
+                modelSupportsVision = bundle.getBoolean(KEY_MODEL_SUPPORTS_VISION, false),
             ),
             history = bundle.getParcelableArrayList(KEY_HISTORY, Bundle::class.java).orEmpty().map { message ->
                 AgentModelClient.ConversationMessage(

@@ -20,6 +20,7 @@ internal class AgentLoop(
     private val runController: AgentRunController,
     private val traceFormatter: AgentTraceFormatter,
     private val onEvent: (AgentEvent) -> Unit,
+    private val modelSupportsVision: Boolean = false,
     private val limits: Limits = Limits(),
 ) {
     data class Limits(
@@ -312,15 +313,26 @@ internal class AgentLoop(
 
         // 工具截图是瞬时观察，不是会话资产。下一次推理消费后立即删除。
         discardPendingToolImageMessage()
-        val images = imageOutcomes.flatMap { outcome -> outcome.result.images }
         val toolNames = imageOutcomes
             .map { outcome -> outcome.call.name }
             .distinct()
             .joinToString(", ")
-        pendingToolImageMessage = AgentConversationCodec.userMessage(
-            text = "Latest observation image(s) returned by tool(s): $toolNames.",
-            images = images,
-        ).also(messages::put)
+        if (modelSupportsVision) {
+            val images = imageOutcomes.flatMap { outcome -> outcome.result.images }
+            pendingToolImageMessage = AgentConversationCodec.userMessage(
+                text = "Latest observation image(s) returned by tool(s): $toolNames.",
+                images = images,
+            ).also(messages::put)
+        } else {
+            // 当前模型不支持图像输入：不附加图片，仅以文本告知截图存在，
+            // 引导模型依赖工具返回的文本 / 控件树信息继续执行。
+            messages.put(
+                AgentConversationCodec.userTextMessage(
+                    "工具 $toolNames 返回了观察截图，但当前模型不支持图像输入，图片未附加。" +
+                        "请基于工具返回的文本、控件树或描述信息继续，不要假设可查看图片。"
+                )
+            )
+        }
 
         imageOutcomes.forEach { outcome ->
             onEvent(

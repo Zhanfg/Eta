@@ -128,6 +128,7 @@ internal object AgentModelClient {
             runController = runController,
             traceFormatter = traceFormatter,
             onEvent = onEvent,
+            modelSupportsVision = config.modelSupportsVision,
         )
         val result = try {
             loop.run()
@@ -210,7 +211,8 @@ internal object AgentModelClient {
         val reasoningCapabilities: ModelReasoningCapabilities? = null,
         val extraBodyJson: String = "",
         val customHeaders: List<CustomHeader> = emptyList(),
-        val customBody: List<CustomBody> = emptyList()
+        val customBody: List<CustomBody> = emptyList(),
+        val modelSupportsVision: Boolean = false,
     ) {
         val effectiveReasoningEffort: ReasoningEffort
             get() = reasoningEffort ?: ReasoningEffort.fromLegacy(thinkingEnabled)
