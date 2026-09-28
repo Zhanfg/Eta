@@ -1,5 +1,8 @@
 # Eta
 
+> [!IMPORTANT]
+> **This repository is no longer the long-term development line.** The canonical repository is now [`Zhanfg/nova-agent`](https://github.com/Zhanfg/nova-agent). This repository remains available for Eta history, tags, licensing, and reference implementation context; new Nova development continues in the canonical repository.
+
 [简体中文](README.md) | **English**
 
 <p><img src="https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?logo=kotlin&amp;logoColor=white" alt="Kotlin 2.4.0"> <img src="https://img.shields.io/badge/AGP-9.3.1-3DDC84?logo=android&amp;logoColor=white" alt="AGP 9.3.1"> <img src="https://img.shields.io/badge/minSdk-34-3DDC84?logo=android&amp;logoColor=white" alt="minSdk 34"> <img src="https://img.shields.io/badge/Coverage-ColorOS%20%26%20HyperOS-1677FF" alt="System integration coverage: ColorOS and HyperOS"></p>

@@ -1,5 +1,8 @@
 # Eta
 
+> [!IMPORTANT]
+> **该仓库已停止作为长期开发主线。** 当前 canonical 为 [`Zhanfg/nova-agent`](https://github.com/Zhanfg/nova-agent)。本仓库保留 Eta 的完整历史、Tag、许可证与参考实现，不再承载后续 Nova 功能开发。
+
 **简体中文** | [English](README_EN.md)
 
 <p><img src="https://img.shields.io/badge/Kotlin-2.4.0-7F52FF?logo=kotlin&amp;logoColor=white" alt="Kotlin 2.4.0"> <img src="https://img.shields.io/badge/AGP-9.3.1-3DDC84?logo=android&amp;logoColor=white" alt="AGP 9.3.1"> <img src="https://img.shields.io/badge/minSdk-34-3DDC84?logo=android&amp;logoColor=white" alt="minSdk 34"> <img src="https://img.shields.io/badge/Coverage-ColorOS%20%26%20HyperOS-1677FF" alt="Coverage ColorOS and HyperOS"></p>
