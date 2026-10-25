@@ -152,7 +152,7 @@ internal fun ModelProviderDetailScreen(
             if (!isNew) {
                 TabRow(
                     tabs = listOf(context.getString(R.string.page_configuration_d7d7ce), context.getString(R.string.page_model_98fd0c)) +
-                        if (initial.id == BuiltinProviders.WORKBUDDY_ID) listOf("WorkBuddy") else emptyList(),
+                        if (initial.id == BuiltinProviders.WORKBUDDY_ID || initial.id == BuiltinProviders.WORKBUDDY_LOCAL_ID) listOf("本地账号 / WorkBuddy") else emptyList(),
                     selectedTabIndex = currentTab,
                     onTabSelected = { currentTab = it },
                     modifier = Modifier.padding(
@@ -182,12 +182,19 @@ internal fun ModelProviderDetailScreen(
                             contentSidePadding = sidePadding,
                         )
                     }
-                    2 -> if (!isNew && initial.id == BuiltinProviders.WORKBUDDY_ID) {
-                        WorkBuddyNativeTab(
-                            provider = initial,
-                            scrollBehavior = scrollBehavior,
-                            contentSidePadding = sidePadding,
-                        )
+                    2 -> if (!isNew) {
+                        when (initial.id) {
+                            BuiltinProviders.WORKBUDDY_ID -> WorkBuddyNativeTab(
+                                provider = initial,
+                                scrollBehavior = scrollBehavior,
+                                contentSidePadding = sidePadding,
+                            )
+                            BuiltinProviders.WORKBUDDY_LOCAL_ID -> WorkBuddyLocalTab(
+                                provider = initial,
+                                scrollBehavior = scrollBehavior,
+                                contentSidePadding = sidePadding,
+                            )
+                        }
                     }
                 }
             }
