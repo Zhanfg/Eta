@@ -137,7 +137,7 @@ internal object BuiltinProviders {
         ),
         OpenAiCompatibleProviderSetting(
             id = WORKBUDDY_ID,
-            name = "WorkBuddy Manager",
+            name = "WorkBuddy · 远程管理（需后端）",
             baseUrl = "https://workbuddy.example.invalid/v1",
             sourceType = ProviderSourceTypes.WORKBUDDY,
             isBuiltIn = true,
