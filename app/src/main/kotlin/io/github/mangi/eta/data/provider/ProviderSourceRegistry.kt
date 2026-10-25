@@ -21,6 +21,7 @@ internal object ProviderSourceRegistry {
         ProviderSourceTypes.STEPFUN,
         ProviderSourceTypes.SILICONFLOW,
         ProviderSourceTypes.OPENROUTER,
+        ProviderSourceTypes.WORKBUDDY,
     )
 
     fun normalize(sourceType: String?): String {
@@ -69,6 +70,7 @@ internal object ProviderSourceRegistry {
             BuiltinProviders.STEPFUN_ID -> ProviderSourceTypes.STEPFUN
             BuiltinProviders.SILICONFLOW_ID -> ProviderSourceTypes.SILICONFLOW
             BuiltinProviders.OPENROUTER_ID -> ProviderSourceTypes.OPENROUTER
+            BuiltinProviders.WORKBUDDY_ID -> ProviderSourceTypes.WORKBUDDY
             else -> null
         }
 
