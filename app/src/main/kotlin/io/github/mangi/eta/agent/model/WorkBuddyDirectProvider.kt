@@ -76,7 +76,7 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
         onEvent: (ProviderEvent) -> Unit,
     ): ProviderResponse {
         runController.throwIfCancelled()
-        val acct = refreshIfNecessary(WorkBuddyLocalVault.select())
+        val acct = refreshIfNecessary(WorkBuddyLocalVault.selectForSession(request.sessionId))
         val headers = mutableListOf(
             CustomHeader("X-Product", "SaaS"),
             CustomHeader("X-Requested-With", "XMLHttpRequest"),
