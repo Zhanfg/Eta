@@ -35,7 +35,8 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
 
     internal fun refreshIfNecessary(input: WorkBuddyLocalVault.Account): WorkBuddyLocalVault.Account {
         val now = System.currentTimeMillis() / 1000
-        if (input.expiresAt <= 0 || now + 600 < input.expiresAt) return input
+        if ((input.expiresAt <= 0 && input.refreshToken.isBlank()) ||
+            (input.expiresAt > 0 && now + 600 < input.expiresAt)) return input
         require(input.refreshToken.isNotBlank()) { "CodeBuddy 账号已过期且缺少刷新凭据，请重新导入 JSON" }
         val endpoint = host(input) + "/v2/plugin/auth/token/refresh"
         val headers = Request.Builder().url(endpoint)
