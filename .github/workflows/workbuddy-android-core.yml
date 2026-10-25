@@ -108,7 +108,8 @@ jobs:
           python3 -m json.tool "$RUNNER_TEMP/wb-fixture/models.json" >/dev/null
           # Test real Go auth-file parsing after restart. The credential is fake
           # and is NEVER sent to Tencent; do not probe /v1/models after insertion.
-          printf '%s\n' '{"uid":"local-byte-fixture","accessToken":"fixture-no-login","realm":"cn","nickname":"Synthetic"}' \
+          # Exercise the same nested account/auth bytes written by ETA native importer.
+          printf '%s\n' '{"account":{"uid":"local-byte-fixture","nickname":"Synthetic"},"auth":{"accessToken":"fixture-no-login","realm":"cn"}}' \
             > "$RUNNER_TEMP/wb-fixture/auths/workbuddy-000.json"
           # Mobile import path explicitly restarts the native Go core.
           kill "$PID" 2>/dev/null || true
