@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +56,12 @@ internal fun WorkBuddyLocalTab(
     var message by remember { mutableStateOf("直接导入电脑端的账号 JSON，不需要 API 地址、服务器或管理员密码。") }
     var accounts by remember { mutableStateOf<List<WorkBuddyLocalVault.AccountSummary>>(emptyList()) }
     var availableModels by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(provider.id) {
+        accounts = withContext(Dispatchers.IO) {
+            runCatching { WorkBuddyLocalVault.summaries() }.getOrDefault(emptyList())
+        }
+    }
 
     LaunchedEffect(provider.id) {
         accounts = try {
