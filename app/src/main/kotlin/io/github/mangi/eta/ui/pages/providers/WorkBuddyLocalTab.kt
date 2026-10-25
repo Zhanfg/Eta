@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.data.model.ProviderSetting
+import io.github.mangi.eta.data.model.Model
 import io.github.mangi.eta.data.repository.ProviderRepository
+import io.github.mangi.eta.data.repository.ModelRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
 import io.github.mangi.eta.data.workbuddy.WorkBuddyAccountImport
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalModels
@@ -56,6 +58,7 @@ internal fun WorkBuddyLocalTab(
     var message by remember { mutableStateOf("直接导入电脑端的账号 JSON，不需要 API 地址、服务器或管理员密码。") }
     var accounts by remember { mutableStateOf<List<WorkBuddyLocalVault.AccountSummary>>(emptyList()) }
     var availableModels by remember { mutableStateOf<Int?>(null) }
+    var modelChoices by remember { mutableStateOf<List<Model>>(emptyList()) }
 
     LaunchedEffect(provider.id) {
         accounts = withContext(Dispatchers.IO) {
@@ -144,7 +147,8 @@ internal fun WorkBuddyLocalTab(
                                         message = "本地导入：新增 ${imported.added}、更新凭据 ${imported.refreshed}、共 ${imported.total} 个账号。正在同步可用模型。"
                                         runCatching {
                                             val models = WorkBuddyLocalModels.fetch()
-                                            ProviderRepository.replaceModels(provider.id, models)
+                                            ModelRepository.syncRemoteModels(provider.id, models, models.mapTo(HashSet()) { it.modelId })
+                                            modelChoices = ProviderRepository.providerById(provider.id)?.models.orEmpty()
                                             RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
                                             availableModels = models.size
                                         }.onFailure {
@@ -177,7 +181,8 @@ internal fun WorkBuddyLocalTab(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     onClick = { work {
                         val models = WorkBuddyLocalModels.fetch()
-                        ProviderRepository.replaceModels(provider.id, models)
+                        ModelRepository.syncRemoteModels(provider.id, models, models.mapTo(HashSet()) { it.modelId })
+                        modelChoices = ProviderRepository.providerById(provider.id)?.models.orEmpty()
                         RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
                         availableModels = models.size
                         message = "已同步 ${models.size} 个模型，请到「模型」页启用。"
@@ -185,6 +190,20 @@ internal fun WorkBuddyLocalTab(
                 )
                 availableModels?.let {
                     EtaPreference(title = "已发现 ${it} 个模型", summary = "模型名单来自账号实时查询，未使用虚构的离线静态表。")
+                }
+                modelChoices.filter { it.isEnabled }.take(8).forEach { model ->
+                    EtaTextButton(
+                        text = "设为当前模型：${model.displayName}",
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        onClick = {
+                            work {
+                                RuntimeConfigRepository.setSelectedModelId(model.id)
+                                RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
+                                message = "已切换为 ${model.displayName}。返回 ETA 聊天即可使用本机账号。"
+                            }
+                        },
+                    )
                 }
             }
         }
