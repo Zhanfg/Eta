@@ -132,6 +132,48 @@ internal object WorkBuddyLocalVault {
     }
 
     // No getters expose bearer tokens outside the provider runtime.
+    /** Only the on-device embedded runtime may serialize these into the private Go auths directory. */
+    fun snapshotForCore(): List<Account> = synchronized(lock) { read().toList() }
+
+    /**
+     * Import refreshed access tokens from the Go core after graceful shutdown.
+     * Files are never exposed via Android's exported providers.
+     */
+    fun ingestCoreRefreshes(directory: File): Int = synchronized(lock) {
+        val known = read()
+        if (known.isEmpty() || !directory.isDirectory) return@synchronized 0
+        val byUid = known.withIndex().associate { it.value.uid to it.index }
+        var count = 0
+        directory.listFiles()?.filter { it.isFile && it.name.startsWith("eta-") && it.extension == "json" }
+            ?.take(200)?.forEach { file ->
+                try {
+                    if (file.length() > 65_536) return@forEach
+                    val raw = org.json.JSONObject(file.readText(Charsets.UTF_8))
+                    val auth = raw.optJSONObject("auth") ?: raw
+                    val account = raw.optJSONObject("account") ?: raw
+                    val uid = account.optString("uid")
+                    val index = byUid[uid] ?: return@forEach
+                    val access = auth.optString("accessToken")
+                    if (access.isBlank()) return@forEach
+                    val previous = known[index]
+                    val refreshed = previous.copy(
+                        accessToken = access,
+                        refreshToken = auth.optString("refreshToken").ifBlank { previous.refreshToken },
+                        expiresAt = auth.optLong("expiresAt").takeIf { it > 0 } ?: previous.expiresAt,
+                        domain = auth.optString("domain").ifBlank { previous.domain },
+                    )
+                    if (refreshed != previous) {
+                        known[index] = refreshed
+                        count++
+                    }
+                } catch (_: Exception) {
+                    // Corrupted individual Go account files do not destroy a valid vault.
+                }
+            }
+        if (count > 0) write(known)
+        count
+    }
+
     fun hasAccounts(): Boolean = synchronized(lock) { read().isNotEmpty() }
     fun summaries(): List<AccountSummary> = synchronized(lock) {
         read().map { AccountSummary(it.nickname.ifBlank { "CodeBuddy 账号" }, it.maskedId(), it.realm) }
