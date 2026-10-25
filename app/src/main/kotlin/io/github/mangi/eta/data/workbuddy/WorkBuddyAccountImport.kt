@@ -150,7 +150,7 @@ internal object WorkBuddyAccountImport {
             cookie.name + "=" + cookie.value
         }
         val fileBody = bytes.toRequestBody("application/json".toMediaType())
-            val form = MultipartBody.Builder().setType(MultipartBody.FORM)
+        val form = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("files", "eta-workbuddy-import.json", fileBody).build()
             val imported = client.newCall(
                 Request.Builder().url(uploadUrl)
@@ -199,6 +199,5 @@ internal object WorkBuddyAccountImport {
                     }
             }.getOrDefault(imported)
         // Session exists only as a local string for this call. No cookie jar.
-        }
     }
 }
