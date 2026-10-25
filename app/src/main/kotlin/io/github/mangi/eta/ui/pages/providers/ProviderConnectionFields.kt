@@ -27,7 +27,9 @@ import io.github.mangi.eta.data.model.AnthropicProviderSetting
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderAuthModes
 import io.github.mangi.eta.data.model.ProviderSetting
+import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.ui.components.EtaPreferenceDivider
+import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaSwitchPreference
 import io.github.mangi.eta.ui.components.EtaWindowSpinnerPreference
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -63,6 +65,13 @@ internal fun ProviderConnectionFields(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+    if (provider.sourceType == ProviderSourceTypes.WORKBUDDY_LOCAL) {
+        EtaPreference(
+            title = "本地账号模式，无需 API Key",
+            summary = "不要输入服务端 API 地址或密钥。请切到「本地账号 / WorkBuddy」标签页，将电脑端导出的 CodeBuddy JSON 导入手机。ETA 会直接连接腾讯 HTTPS 模型接口。",
+        )
+        return
     }
     if (accountMode != null) {
         EtaPreferenceDivider(hasLeading = false)
