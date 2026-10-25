@@ -68,15 +68,20 @@ internal object WorkBuddyEmbeddedCore {
             ?.forEach { it.delete() }
         val snapshot = WorkBuddyLocalVault.snapshotForCore()
         snapshot.forEachIndexed { index, account ->
+            // workbuddy2api auth files use the same two-level schema as
+            // the official Manager JSON export. Flat fields may show up in
+            // account enumeration but do not reliably populate Go auth state.
             val json = JSONObject()
-                .put("uid", account.uid)
-                .put("accessToken", account.accessToken)
-                .put("refreshToken", account.refreshToken)
-                .put("expiresAt", account.expiresAt)
-                .put("enterpriseId", account.enterpriseId)
-                .put("domain", account.domain)
-                .put("realm", account.realm)
-                .put("nickname", account.nickname)
+                .put("account", JSONObject()
+                    .put("uid", account.uid)
+                    .put("enterpriseId", account.enterpriseId)
+                    .put("nickname", account.nickname))
+                .put("auth", JSONObject()
+                    .put("accessToken", account.accessToken)
+                    .put("refreshToken", account.refreshToken)
+                    .put("expiresAt", account.expiresAt)
+                    .put("domain", account.domain)
+                    .put("realm", account.realm))
             writeLocked(File(root, "workbuddy-${index.toString().padStart(3, '0')}.json"), json.toString())
         }
         return snapshot.size
