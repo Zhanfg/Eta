@@ -94,7 +94,7 @@ internal object WorkBuddyLocalModels {
         if (id.isBlank() || item.optBoolean("disabled")) return null
         val low = id.lowercase()
         if (!global) {
-            if (listOf("nes-", "completion-", "codewise-").any(low::startsWith)) return null
+            if (listOf("nes-", "completion-", "codewise-").any { prefix -> low.startsWith(prefix) }) return null
             val maxOutput = item.optInt("maxOutputTokens", 0)
             if (maxOutput in 1..256) return null
             val tags = item.optJSONArray("tags")
