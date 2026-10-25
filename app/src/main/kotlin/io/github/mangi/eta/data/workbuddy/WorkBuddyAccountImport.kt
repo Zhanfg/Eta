@@ -33,6 +33,10 @@ internal object WorkBuddyAccountImport {
         .followRedirects(false).followSslRedirects(false)
         .callTimeout(40, TimeUnit.SECONDS).build()
 
+    /** Never expose untrusted server response bodies in Android UI exceptions. */
+    private fun parseObject(raw: String?): JsonObject? =
+        raw?.let { runCatching { json.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+
     data class AccountPreview(
         val account: String,
         val nickname: String,
@@ -140,9 +144,7 @@ internal object WorkBuddyAccountImport {
         val healthUrl = origin.newBuilder().addPathSegments("api/healthz").build()
         client.newCall(Request.Builder().url(healthUrl).get().build()).execute().use { response ->
             require(response.isSuccessful) { "无法验证 WorkBuddy 服务地址（HTTP ${response.code}）" }
-            val body = response.body?.string()?.let {
-                json.parseToJsonElement(it) as? JsonObject
-            }
+            val body = parseObject(response.body?.string())
             require(body?.str("service") == "workbuddy-manager") {
                 "目标地址不是已识别的 WorkBuddy Manager；已取消发送管理员凭据"
             }
@@ -161,9 +163,7 @@ internal object WorkBuddyAccountImport {
                 it.name == "wb_session" && it.matches(uploadUrl) && it.httpOnly
             } ?: throw IllegalStateException("登录成功，但 WorkBuddy 未返回有效的管理员会话")
             // Response bodies contain no secrets in normal operation; never expose raw JSON.
-            val loginJson = response.body?.string()?.let {
-                json.parseToJsonElement(it) as? JsonObject
-            } ?: throw IllegalStateException("服务器登录响应无效")
+            val loginJson = parseObject(response.body?.string()) ?: throw IllegalStateException("服务器登录响应无效")
             require(loginJson.str("role") == "admin") { "此账号不是管理员，无法导入账号 JSON" }
             cookie.name + "=" + cookie.value
         }
@@ -179,9 +179,7 @@ internal object WorkBuddyAccountImport {
                 if (!response.isSuccessful) throw IllegalStateException(
                     "账号导入失败（HTTP ${response.code}）。可能需要管理员会话或上游授权"
                 )
-                val body = response.body?.string()?.let {
-                    json.parseToJsonElement(it) as? JsonObject
-                } ?: throw IllegalStateException("服务器未返回有效导入结果")
+                val body = parseObject(response.body?.string()) ?: throw IllegalStateException("服务器未返回有效导入结果")
                 fun tally(field: String): Int = (body[field] as? JsonArray)?.size ?: 0
                 Result(
                     added = tally("added"),
@@ -198,9 +196,7 @@ internal object WorkBuddyAccountImport {
                 client.newCall(Request.Builder().url(listUrl).header("Cookie", session).get().build())
                     .execute().use { response ->
                         if (!response.isSuccessful) return@runCatching imported
-                        val body = response.body?.string()?.let {
-                            json.parseToJsonElement(it) as? JsonObject
-                        } ?: return@runCatching imported
+                        val body = parseObject(response.body?.string()) ?: return@runCatching imported
                         val entries = (body["accounts"] as? JsonArray).orEmpty()
                         imported.copy(
                             livePoolTotal = body.str("total").toIntOrNull(),
