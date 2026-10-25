@@ -2,7 +2,10 @@ package io.github.mangi.eta.data.workbuddy
 
 import android.content.Context
 import android.net.Uri
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.util.zip.ZipInputStream
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +31,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
  */
 internal object WorkBuddyAccountImport {
     private const val MAX_FILE_SIZE = 2 * 1024 * 1024
+    private const val MAX_ARCHIVE_SIZE = 12 * 1024 * 1024
+    private const val MAX_UNPACKED_SIZE = 8 * 1024 * 1024
+    private const val MAX_ACCOUNT_FILES = 200
+
     private val json = Json { ignoreUnknownKeys = true }
     private val client = OkHttpClient.Builder()
         .followRedirects(false).followSslRedirects(false)
@@ -119,8 +126,83 @@ internal object WorkBuddyAccountImport {
         }
     }
 
+    /**
+     * Accept a standalone JSON or the stock WorkBuddy Manager accounts.zip export.
+     * ZIP entries are never extracted to a filesystem; bounded memory-only reads
+     * make traversal and ZIP-bomb payloads incapable of writing private files.
+     */
+    internal fun readImportDocumentsBytes(data: ByteArray): List<ByteArray> {
+        require(data.isNotEmpty() && data.size <= MAX_ARCHIVE_SIZE) { "选择的账号文件过大或为空" }
+        val isZip = data.size >= 4 &&
+            data[0] == 0x50.toByte() && data[1] == 0x4b.toByte() &&
+            data[2] == 0x03.toByte() && data[3] == 0x04.toByte()
+        if (!isZip) {
+            require(data.size <= MAX_FILE_SIZE) { "单个 JSON 账号文件不能超过 2 MB" }
+            parsePreview(data)
+            return listOf(data)
+        }
+        val files = mutableListOf<ByteArray>()
+        var uncompressed = 0
+        ZipInputStream(ByteArrayInputStream(data)).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.isDirectory) { zip.closeEntry(); continue }
+                val name = entry.name.replace('\\', '/')
+                // Reject attempts to smuggle paths. Only the JSON bytes are read,
+                // but keep the format requirement strict and auditable.
+                require(!name.startsWith("/") &&
+                    name.split('/').none { it == "." || it == ".." }) {
+                    "ZIP 存在不安全的文件路径"
+                }
+                if (!name.lowercase().endsWith(".json")) {
+                    zip.closeEntry()
+                    continue
+                }
+                require(files.size < MAX_ACCOUNT_FILES) { "ZIP 内账号文件超过 200 个" }
+                val bytes = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = zip.read(buffer)
+                    if (count < 0) break
+                    uncompressed += count
+                    require(uncompressed <= MAX_UNPACKED_SIZE && bytes.size() + count <= MAX_FILE_SIZE) {
+                        "ZIP 解压后超过安全大小限制"
+                    }
+                    bytes.write(buffer, 0, count)
+                }
+                val accountBytes = bytes.toByteArray()
+                parsePreview(accountBytes)
+                files += accountBytes
+                zip.closeEntry()
+            }
+        }
+        require(files.isNotEmpty()) { "ZIP 没有可导入的 WorkBuddy 账号 JSON 文件" }
+        return files
+    }
+
+    internal fun readImportDocuments(context: Context, uri: Uri): List<ByteArray> {
+        val stream = context.contentResolver.openInputStream(uri)
+            ?: throw IllegalArgumentException("无法读取所选账号文件")
+        val data = stream.use { input ->
+            val output = ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                require(output.size() + count <= MAX_ARCHIVE_SIZE) {
+                    "导入包超过 12 MB 安全上限"
+                }
+                output.write(buffer, 0, count)
+            }
+            output.toByteArray()
+        }
+        return readImportDocumentsBytes(data)
+    }
+
     suspend fun preview(context: Context, uri: Uri): Preview = withContext(Dispatchers.IO) {
-        parsePreview(readBounded(context, uri))
+        val records = readImportDocuments(context, uri).flatMap { parsePreview(it).accounts }
+        require(records.size in 1..MAX_ACCOUNT_FILES) { "导入账号数量必须为 1–200 个" }
+        Preview(records.size, records)
     }
 
     suspend fun importAccounts(
