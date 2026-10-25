@@ -33,6 +33,7 @@ import io.github.mangi.eta.data.workbuddy.WorkBuddyAccountImport
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalModels
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
 import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
+import io.github.mangi.eta.data.workbuddy.WorkBuddyCoreDashboard
 import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaTextButton
 import kotlinx.coroutines.CancellationException
@@ -60,6 +61,7 @@ internal fun WorkBuddyLocalTab(
     var accounts by remember { mutableStateOf<List<WorkBuddyLocalVault.AccountSummary>>(emptyList()) }
     var availableModels by remember { mutableStateOf<Int?>(null) }
     var backendStatus by remember { mutableStateOf("未检测") }
+    var coreSummary by remember { mutableStateOf<WorkBuddyCoreDashboard.Summary?>(null) }
     var modelChoices by remember { mutableStateOf<List<Model>>(emptyList()) }
 
     LaunchedEffect(provider.id) {
@@ -187,10 +189,40 @@ internal fun WorkBuddyLocalTab(
                         work {
                             val core = withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.ensureStarted() }
                             backendStatus = "本地网关运行中"
-                            message = "本地网关健康检查成功；服务已绑定 127.0.0.1，仅在 ETA 内部使用。"
+                            coreSummary = WorkBuddyCoreDashboard.load()
+                            message = "Go 账号池已启动；状态与积分统计直接来自后端。" 
                         }
                     },
                 )
+                EtaTextButton(
+                    text = "刷新 Go 账号池状态",
+                    enabled = !busy && WorkBuddyEmbeddedCore.isBundled(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    onClick = {
+                        work {
+                            coreSummary = WorkBuddyCoreDashboard.load()
+                            backendStatus = "已连接"
+                        }
+                    },
+                )
+                coreSummary?.let { value ->
+                    EtaPreference(
+                        title = "账号池 ${value.healthy} / ${value.total} 可用",
+                        summary = "国内 ${value.cnTotal} · 国际 ${value.globalTotal} · " +
+                            "冷却 ${value.cooling} · 已禁用 ${value.disabled} · " +
+                            "并发已满 ${value.inFlightFull}",
+                    )
+                    EtaPreference(
+                        title = "活跃粘性会话：${value.stickySessions}",
+                        summary = "来自 workbuddy2api 内存中的真实会话路由状态",
+                    )
+                    EtaPreference(
+                        title = "当日积分使用：${value.budgetUsed}",
+                        summary = if (value.budgetLimit > 0)
+                            "预算上限 ${value.budgetLimit}（仅统计上游确实返回的用量）"
+                        else "未设置积分预算上限；已用量仅统计上游可观测记录",
+                    )
+                }
                 EtaTextButton(
                     text = "停止本地核心并封存令牌",
                     enabled = !busy,
@@ -199,6 +231,7 @@ internal fun WorkBuddyLocalTab(
                         work {
                             withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
                             backendStatus = "已停止"
+                            coreSummary = null
                             message = "核心进程已退出，本次运行时令牌已写回加密账号库。"
                         }
                     },
