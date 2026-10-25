@@ -39,14 +39,10 @@ jobs:
           "-Peta.buildMetadata=${HEAD_SHA::7}"
           :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 
-      - name: 上传可安装的 Debug APK
-        if: success()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: eta-pr-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 14
+      # Intentionally NO APK artifact here: this workflow only validates Kotlin.
+      # It does not package the Go libwbcore.so required by WorkBuddy local mode.
+      # Installable, integrated builds are published only by the gated
+      # workbuddy-android-core.yml workflow after the Go core is verified.
 
       - name: 上传检查报告
         if: failure()
