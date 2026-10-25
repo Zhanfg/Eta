@@ -32,6 +32,7 @@ import io.github.mangi.eta.data.repository.RuntimeConfigRepository
 import io.github.mangi.eta.data.workbuddy.WorkBuddyAccountImport
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalModels
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
+import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
 import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaTextButton
 import kotlinx.coroutines.CancellationException
@@ -58,6 +59,7 @@ internal fun WorkBuddyLocalTab(
     var message by remember { mutableStateOf("直接导入电脑端的账号 JSON，不需要 API 地址、服务器或管理员密码。") }
     var accounts by remember { mutableStateOf<List<WorkBuddyLocalVault.AccountSummary>>(emptyList()) }
     var availableModels by remember { mutableStateOf<Int?>(null) }
+    var backendStatus by remember { mutableStateOf("未检测") }
     var modelChoices by remember { mutableStateOf<List<Model>>(emptyList()) }
 
     LaunchedEffect(provider.id) {
@@ -142,6 +144,11 @@ internal fun WorkBuddyLocalTab(
                                             WorkBuddyLocalVault.importJson(context, uri)
                                         }
                                         accounts = withContext(Dispatchers.IO) { WorkBuddyLocalVault.summaries() }
+                                        // Force the embedded Go pool to reload the new encrypted imports.
+                                        if (WorkBuddyEmbeddedCore.isBundled()) {
+                                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
+                                            backendStatus = "待启动"
+                                        }
                                         selectedFile = null
                                         preview = null
                                         message = "本地导入：新增 ${imported.added}、更新凭据 ${imported.refreshed}、共 ${imported.total} 个账号。正在同步可用模型。"
@@ -162,6 +169,40 @@ internal fun WorkBuddyLocalTab(
                         )
                     }
                 }
+            }
+        }
+        item {
+            ProviderSection(title = "WorkBuddy Android 原生核心") {
+                EtaPreference(
+                    title = "运行时状态：$backendStatus",
+                    summary = if (WorkBuddyEmbeddedCore.isBundled())
+                        "APK 已包含 Android ARM64 Go 网关；需要启动验证才代表可用"
+                    else "本 APK 没有打包 Go 原生核心，无法运行完整的本地账号池",
+                )
+                EtaTextButton(
+                    text = if (busy) "检测中…" else "启动并验证原生后端",
+                    enabled = !busy && WorkBuddyEmbeddedCore.isBundled(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    onClick = {
+                        work {
+                            val core = withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.ensureStarted() }
+                            backendStatus = "本地网关运行中"
+                            message = "本地网关健康检查成功；服务已绑定 127.0.0.1，仅在 ETA 内部使用。"
+                        }
+                    },
+                )
+                EtaTextButton(
+                    text = "停止本地核心并封存令牌",
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    onClick = {
+                        work {
+                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
+                            backendStatus = "已停止"
+                            message = "核心进程已退出，本次运行时令牌已写回加密账号库。"
+                        }
+                    },
+                )
             }
         }
         item {
@@ -215,7 +256,7 @@ internal fun WorkBuddyLocalTab(
                 )
                 EtaPreference(
                     title = "与其他模式的关系",
-                    summary = "本地账号模式使用 Tencent 原生 Chat SSE；独立 Manager 模式仍支持 Responses / Messages 翻译网关。协议不同不代表模型能力改变。",
+                    summary = "本地账号模式已改用官方 Go 网关协议和账号池；OpenAI Responses / Anthropic Messages 仍是管理网关可选的兼容转换层，不代表上游原生能力。",
                 )
             }
         }
