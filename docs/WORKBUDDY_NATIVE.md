@@ -35,3 +35,34 @@
 - Manager unavailable should not affect selection or use of other Providers.
 - Recomposition, screen navigation, app restart must not persist `wbt_`.
 - Check domestic and international realm separately; international onboarding requires a valid region.
+
+
+## 手机原生 JSON 导入（电脑登录 → 手机上直接导入）
+
+此功能在 ETA 内完成，不调用浏览器上传页或 WebView。
+
+1. 在电脑上通过有权访问的 WorkBuddy/CodeBuddy 账号登录，并导出**账号凭据 JSON**。原版 WorkBuddy Manager 在管理员账号页面 `/api/accounts/export` 导出的是 ZIP：请先解压后传输其中的 `.json`。也支持符合上述 `accounts` 多账号结构的 JSON，**不是任意 JavaScript 文件，也不是包含 API URL 的普通订阅配置**。
+2. 将 JSON 通过可信的端到端途径传到手机。该文件包含真实 access/refresh tokens，避免用公开网盘或不受保护的聊天转发。
+3. ETA → Providers → WorkBuddy Manager → WorkBuddy →「电脑登录 → 手机 JSON 导入」→「选择账号 JSON 文件」。
+4. ETA 使用 Android SAF 文件选择器，最大 2 MiB，验证是否含 `uid/user_id` + `accessToken/access_token`，显示脱敏账号列表，不渲染原始 Token。
+5. 输入**WorkBuddy Manager 服务端管理员用户名与密码**，确认目标 HTTPS Base URL，二次点击导入。ETA 临时调用 `POST /api/login`，使用服务端 Set-Cookie 的 `wb_session`，然后经 `multipart/form-data` 的 `files` 字段调用 `POST /api/accounts/upload`。普通管理 API Token `wbt_` **不具备此权限**。
+6. 默认 `overwrite=false`；重复账号由服务端拒绝，绝不悄悄替换。显示新增、拒绝与失败的真实数量；随后使用同一次会话 `GET /api/accounts` 展示实时池中账号列表。
+7. 密码、登录 Cookie 和文件原始字节不会存入 ETA 数据库、日志或 Preferences；会话 Cookie 不进入全局 CookieJar，完成请求后不保存在客户端。**服务端所产生的会话可能在其自身过期前仍有效**；此接口遵循服务端会话管理。
+
+**限制**：当前需有可访问的 WorkBuddy Manager 后端；导入不是把 Python/Go 账号网关部署在 Android 本机。账号 JSON 能通过格式校验不代表账户登录有效、有积分或具备特定模型权益；以服务端实际状态及模型发现为准。
+
+## 传输协议
+
+WorkBuddy 新建 Provider **默认 OpenAI Responses**。在 Provider 的「配置 → API 协议」中可以手动选：
+- **Responses**（默认）：`/v1/responses`；由 WorkBuddy 翻译到 Chat 网关
+- **Anthropic Messages**：`/v1/messages`；ETA 使用现有 Anthropic Messages 客户端，仍由 WorkBuddy 网关翻译
+- **Chat Completions**：`/v1/chat/completions`；作为旧兼容兜底
+
+三者共享 ETA Agent 工具执行和会话存储。切换只是序列化/反序列化模式的变化，**不保证**上游原生推理状态、托管工具、提示缓存和 token 统计语义完整保留。已有配置的端点选择不被默认值覆盖。
+
+### 验证项
+- SAF 中断、无效 JSON、重复 UID、超 2 MiB、嵌套 auth/account、多个账号导入
+- HTTPS 网关、登录非 admin、Cookie 缺失、401/403/429、服务端不支持上传的版本、网络断开
+- 不发生明文账号密钥在 UI/日志/粘贴板外泄；没有 CookieJar 长期储存
+- 上传成功与账号池刷新分开报告，不把 API 上传成功误判为模型可用
+- 三协议消息和工具调用 SSE 回归，在有合法账号的测试后端上分别检查
