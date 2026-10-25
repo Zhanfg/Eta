@@ -66,3 +66,24 @@ WorkBuddy 新建 Provider **默认 OpenAI Responses**。在 Provider 的「配�
 - 不发生明文账号密钥在 UI/日志/粘贴板外泄；没有 CookieJar 长期储存
 - 上传成功与账号池刷新分开报告，不把 API 上传成功误判为模型可用
 - 三协议消息和工具调用 SSE 回归，在有合法账号的测试后端上分别检查
+
+
+## On-device WorkBuddy JSON mode (new; preferred for PC login → phone import)
+
+> This section supersedes the earlier statement that a WorkBuddy Manager
+> server is always required. **The separate managed gateway still does
+> require a backend**, but the new built-in `WorkBuddy · 本地账号`
+> operates directly on the Android device.
+
+1. In ETA → Providers, open **WorkBuddy · 本地账号**, not **WorkBuddy Manager**.
+2. Open **本地账号 / WorkBuddy**, choose the `.json` exported after logging in to your own CodeBuddy / WorkBuddy account on the computer, inspect the masked preview and confirm import.
+3. The app normalizes nested `auth` + `account` and flat JSON, supports `{"accounts":[...]}` exports, and saves normalized credentials in an AES-256-GCM encrypted no-backup Android Keystore-backed private file. It does **not** require a Manager URL, administrator password, Docker, a self-hosted proxy, or a `wbk_` key.
+4. Duplicate UIDs are updated **only after the explicit import confirmation**, so users can repeat the desktop export after token rotation.
+5. ETA uses the local account to query the available model list from the provider's HTTPS endpoint and populates ETA's normal Model tab. Enable/select a model there before using the Agent.
+6. The local runtime uses Chat Completions SSE because the underlying Tencent endpoint is Chat-shaped. The original ETA Agent tools, reasoning panel and conversation UI remain shared. The external Manager provider supports Responses/Messages/Chat bridges separately.
+
+**Security boundaries:** Only known official Tencent HTTPS hosts are used for model calls and refresh; saved credentials never appear in ETA Provider API Key fields or model-configuration JSON. A Keystore key is tied to the Android installation; uninstalling the app typically destroys access to the encrypted vault. Keep an independently protected original export if restoration is needed. API keys or cookies from unrelated services cannot be imported as CodeBuddy account JSON.
+
+**Validation still required:** This implementation was developed from inspectable third-party open-source API behavior; native on-device calling, token refresh and model discovery must be tested against an account you control. The upstream vendor can change its private interface and may impose usage restrictions. The local mode is not the entire Python manager/Go pool port: full advanced account-pool orchestration, scheduler, entitlement reconciliation and broad 3-protocol native support remain unavailable here.
+
+**Potential installation blocker:** The PR CI produces a **debug-signed** package using ETA's production applicationId. The Debug APK can fail to install over a production APK signed with a different certificate (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). The project must not claim that this debug artifact is an in-place production update. Back up application data before any uninstall, or use a compatible signing/update channel.
