@@ -33,7 +33,13 @@ internal object WorkBuddyAccountImport {
         .followRedirects(false).followSslRedirects(false)
         .callTimeout(40, TimeUnit.SECONDS).build()
 
-    data class AccountPreview(val account: String, val nickname: String, val realm: String)
+    data class AccountPreview(
+        val account: String,
+        val nickname: String,
+        val realm: String,
+        val credits: Long? = null,
+        val poolStatus: String? = null,
+    )
     data class Preview(val count: Int, val accounts: List<AccountPreview>)
     data class Result(
         val added: Int, val updated: Int, val rejected: Int, val failed: Int,
@@ -193,6 +199,14 @@ internal object WorkBuddyAccountImport {
                                     account = if (uid.length <= 6) "••••" else uid.take(3) + "•••" + uid.takeLast(3),
                                     nickname = account.str("nickname").ifBlank { "未命名账号" }.take(48),
                                     realm = account.str("realm").ifBlank { "自动识别" }.take(24),
+                                    credits = account.str("credits").toLongOrNull(),
+                                    poolStatus = when {
+                                        account.str("manual_disabled") == "true" || account.str("disabled") == "true" -> "已停用"
+                                        account.str("cooling") == "true" -> "冷却中"
+                                        account.str("in_pool") == "false" -> "未加载到账号池"
+                                        account.str("in_pool") == "true" -> "已加载"
+                                        else -> "状态未知"
+                                    },
                                 )
                             },
                         )
