@@ -35,8 +35,9 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
 
     internal fun refreshIfNecessary(input: WorkBuddyLocalVault.Account): WorkBuddyLocalVault.Account {
         val now = System.currentTimeMillis() / 1000
-        if ((input.expiresAt <= 0 && input.refreshToken.isBlank()) ||
-            (input.expiresAt > 0 && now + 600 < input.expiresAt)) return input
+        // Unknown expiration is NOT evidence that the token has expired.
+        // Blind refresh on each imported JSON causes valid accounts to fail.
+        if (input.expiresAt <= 0 || now + 600 < input.expiresAt) return input
         require(input.refreshToken.isNotBlank()) { "CodeBuddy 账号已过期且缺少刷新凭据，请重新导入 JSON" }
         val endpoint = host(input) + "/v2/plugin/auth/token/refresh"
         val headers = Request.Builder().url(endpoint)
@@ -47,7 +48,11 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
             .header("Referer", origin(input) + "/")
             .header("User-Agent", "CLI/2.63.2 CodeBuddy/2.63.2")
             .header("X-Refresh-Token", input.refreshToken)
-            .header("X-Auth-Refresh-Source", "workbuddy")
+            .header("X-Auth-Refresh-Source", "plugin")
+            .header("X-CodeBuddy-Request", "1")
+            .header("Accept-Language", if (input.realm == "global") "en-US" else "zh-CN")
+            .header("Authorization", "Bearer ${input.accessToken}")
+            .apply { if (input.uid.isNotBlank()) header("X-User-Id", input.uid) }
             .apply {
                 if (input.enterpriseId.isNotBlank()) header("X-Enterprise-Id", input.enterpriseId)
             }.post(ByteArray(0).toRequestBody(null)).build()
@@ -56,8 +61,12 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
             val reply = res.peekBody(65_536).string()
             val parsed = runCatching { JSONObject(reply) }.getOrNull()
                 ?: throw IllegalStateException("CodeBuddy 账号刷新响应无效")
-            require(parsed.optInt("code", -1) == 0) { "CodeBuddy 账号刷新被拒绝，请在电脑重新登录" }
-            parsed.optJSONObject("data") ?: throw IllegalStateException("CodeBuddy 账号刷新未返回凭据")
+            if (parsed.has("code") && parsed.optInt("code", -1) != 0) {
+                throw IllegalStateException("CodeBuddy 账号刷新被拒绝，请在电脑重新登录")
+            }
+            // CodeBuddy can return a bare {accessToken, refreshToken, expiresIn}
+            // or a {code:0, data:{...}} envelope depending on service version.
+            parsed.optJSONObject("data") ?: parsed
         }
         val newToken = payload.optString("accessToken")
         require(newToken.isNotBlank()) { "CodeBuddy 刷新未返回 Access Token" }
@@ -81,6 +90,8 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
         val headers = mutableListOf(
             CustomHeader("X-Product", "SaaS"),
             CustomHeader("X-Requested-With", "XMLHttpRequest"),
+            CustomHeader("X-CodeBuddy-Request", "1"),
+            CustomHeader("Accept-Language", if (acct.realm == "global") "en-US" else "zh-CN"),
         )
         if (acct.uid.isNotBlank()) headers += CustomHeader("X-User-Id", acct.uid)
         else headers += CustomHeader("X-No-User-Id", "1")
