@@ -2,6 +2,7 @@ package io.github.mangi.eta.agent.model
 
 import io.github.mangi.eta.data.model.ProviderTypes
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
+import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.data.provider.ProviderConnectionProfile
 
 internal object ProviderClientFactory {
@@ -16,6 +17,9 @@ internal object ProviderClientFactory {
         return when (config.providerType) {
             ProviderTypes.OPENAI_COMPATIBLE -> when (config.openAiEndpointMode) {
                 OpenAiEndpointMode.RESPONSES -> OpenAiResponsesProvider
+                OpenAiEndpointMode.MESSAGES ->
+                    if (config.providerSourceType == ProviderSourceTypes.WORKBUDDY) AnthropicMessagesProvider
+                    else OpenAiChatCompletionsProvider
                 else -> OpenAiChatCompletionsProvider
             }
             ProviderTypes.ANTHROPIC -> AnthropicMessagesProvider
