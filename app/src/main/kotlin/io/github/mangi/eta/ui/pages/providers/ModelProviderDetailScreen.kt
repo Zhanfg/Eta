@@ -42,6 +42,7 @@ import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.withId
 import io.github.mangi.eta.data.repository.ProviderRepository
+import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.repository.RemoteModelFetcher
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
 import io.github.mangi.eta.ui.components.EtaCard
@@ -150,7 +151,8 @@ internal fun ModelProviderDetailScreen(
         ) {
             if (!isNew) {
                 TabRow(
-                    tabs = listOf(context.getString(R.string.page_configuration_d7d7ce), context.getString(R.string.page_model_98fd0c)),
+                    tabs = listOf(context.getString(R.string.page_configuration_d7d7ce), context.getString(R.string.page_model_98fd0c)) +
+                        if (initial.id == BuiltinProviders.WORKBUDDY_ID) listOf("WorkBuddy") else emptyList(),
                     selectedTabIndex = currentTab,
                     onTabSelected = { currentTab = it },
                     modifier = Modifier.padding(
@@ -176,6 +178,13 @@ internal fun ModelProviderDetailScreen(
                         ProviderModelsTab(
                             provider = initial,
                             scope = scope,
+                            scrollBehavior = scrollBehavior,
+                            contentSidePadding = sidePadding,
+                        )
+                    }
+                    2 -> if (!isNew && initial.id == BuiltinProviders.WORKBUDDY_ID) {
+                        WorkBuddyNativeTab(
+                            provider = initial,
                             scrollBehavior = scrollBehavior,
                             contentSidePadding = sidePadding,
                         )
