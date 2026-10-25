@@ -8,6 +8,7 @@ import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 /**
@@ -32,7 +33,7 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
     private fun origin(account: WorkBuddyLocalVault.Account): String =
         if (account.realm == "global") "https://www.workbuddy.ai" else "https://www.codebuddy.cn"
 
-    private fun refreshIfNecessary(input: WorkBuddyLocalVault.Account): WorkBuddyLocalVault.Account {
+    internal fun refreshIfNecessary(input: WorkBuddyLocalVault.Account): WorkBuddyLocalVault.Account {
         val now = System.currentTimeMillis() / 1000
         if (input.expiresAt <= 0 || now + 600 < input.expiresAt) return input
         require(input.refreshToken.isNotBlank()) { "CodeBuddy 账号已过期且缺少刷新凭据，请重新导入 JSON" }
@@ -48,7 +49,7 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
             .header("X-Auth-Refresh-Source", "workbuddy")
             .apply {
                 if (input.enterpriseId.isNotBlank()) header("X-Enterprise-Id", input.enterpriseId)
-            }.post(okhttp3.RequestBody.create(null, ByteArray(0))).build()
+            }.post(ByteArray(0).toRequestBody(null)).build()
         val payload = refreshClient.newCall(headers).execute().use { res ->
             if (!res.isSuccessful) throw IllegalStateException("CodeBuddy 账号刷新失败：HTTP ${res.code}，请在电脑重新登录")
             val reply = res.peekBody(65_536).string()
