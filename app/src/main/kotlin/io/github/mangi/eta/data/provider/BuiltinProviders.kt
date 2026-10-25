@@ -25,6 +25,7 @@ internal object BuiltinProviders {
     const val XAI_ID = "builtin-xai"
     const val GEMINI_ID = "builtin-gemini"
     const val WORKBUDDY_ID = "builtin-workbuddy"
+    const val WORKBUDDY_LOCAL_ID = "builtin-workbuddy-local"
 
     val PROVIDERS: List<ProviderSetting> = listOf(
         OpenAiCompatibleProviderSetting(
@@ -143,6 +144,17 @@ internal object BuiltinProviders {
             sortOrder = 12,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
             endpointMode = OpenAiEndpointMode.RESPONSES,
+        ),
+        OpenAiCompatibleProviderSetting(
+            id = WORKBUDDY_LOCAL_ID,
+            name = "WorkBuddy · 本地账号",
+            baseUrl = "https://copilot.tencent.com/v2",
+            apiKey = "eta-on-device-credentials",
+            sourceType = ProviderSourceTypes.WORKBUDDY_LOCAL,
+            isBuiltIn = true,
+            sortOrder = 13,
+            systemPrompt = DEFAULT_SYSTEM_PROMPT,
+            endpointMode = OpenAiEndpointMode.CHAT_COMPLETIONS,
         ),
     )
 
