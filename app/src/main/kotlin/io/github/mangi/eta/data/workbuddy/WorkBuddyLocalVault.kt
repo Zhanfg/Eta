@@ -144,7 +144,7 @@ internal object WorkBuddyLocalVault {
         if (known.isEmpty() || !directory.isDirectory) return@synchronized 0
         val byUid = known.withIndex().associate { it.value.uid to it.index }
         var count = 0
-        directory.listFiles()?.filter { it.isFile && it.name.startsWith("eta-") && it.extension == "json" }
+        directory.listFiles()?.filter { it.isFile && it.name.startsWith("workbuddy-") && it.extension == "json" }
             ?.take(200)?.forEach { file ->
                 try {
                     if (file.length() > 65_536) return@forEach
