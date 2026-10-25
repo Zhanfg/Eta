@@ -3,9 +3,6 @@ name: WorkBuddy Android Core Feasibility
 on:
   push:
     branches: [feature/workbuddy-native-integration]
-    paths:
-      - .github/workflows/workbuddy-android-core.yml
-      - docs/WORKBUDDY_ANDROID_PORT.md
   workflow_dispatch:
 
 permissions:
@@ -109,7 +106,22 @@ jobs:
             echo "::error::Authenticated model listing returned $MODELS"; exit 1
           fi
           python3 -m json.tool "$RUNNER_TEMP/wb-fixture/models.json" >/dev/null
-          echo "PASS: loopback service boot, health bytes, auth denial, authenticated model-list bytes"
+          # Test real Go auth-file parsing and hot-loading. The credential is fake
+          # and is NEVER sent to Tencent; do not probe /v1/models after insertion.
+          printf '%s\n' '{"uid":"local-byte-fixture","accessToken":"fixture-no-login","realm":"cn","nickname":"Synthetic"}' \
+            > "$RUNNER_TEMP/wb-fixture/auths/eta-000.json"
+          loaded=0
+          for attempt in $(seq 1 40); do
+            curl -fsS --max-time 1 -H 'Authorization: Bearer fixture-only-please-never-use-in-production' \
+              http://127.0.0.1:17863/status -o "$RUNNER_TEMP/wb-fixture/status.json"
+            if python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["total"]==1' \
+              "$RUNNER_TEMP/wb-fixture/status.json" 2>/dev/null; then
+              loaded=1; break
+            fi
+            sleep 0.25
+          done
+          if [[ "$loaded" != 1 ]]; then echo "::error::Go core did not load imported auth bytes"; exit 1; fi
+          echo "PASS: Go core boot + HTTP bytes + auth guard + live JSON account file hotload"
       - name: Cross-compile actual Go gateway for Android arm64
         shell: bash
         run: |
