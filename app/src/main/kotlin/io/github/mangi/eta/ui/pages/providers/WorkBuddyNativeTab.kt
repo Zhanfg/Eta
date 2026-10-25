@@ -329,10 +329,13 @@ internal fun WorkBuddyNativeTab(
                                 val file = selectedAccountJson
                                 if (file != null) {
                                     runAction {
-                                        val result = WorkBuddyAccountImport.importAccounts(
-                                            context, file, provider.baseUrl, adminUsername, adminPassword,
-                                        )
-                                        adminPassword = ""
+                                        val result = try {
+                                            WorkBuddyAccountImport.importAccounts(
+                                                context, file, provider.baseUrl, adminUsername, adminPassword,
+                                            )
+                                        } finally {
+                                            adminPassword = "" // clear on success AND failure
+                                        }
                                         importResult = result
                                         if (managementToken.startsWith("wbt_")) {
                                             pool = runCatching {
@@ -352,6 +355,18 @@ internal fun WorkBuddyNativeTab(
                             title = "已成功导入 ${result.imported} 个账号",
                             summary = "新增 ${result.added} · 拒绝重复/无效 ${result.rejected} · 失败 ${result.failed}；不会静默覆盖已有凭据。",
                         )
+                        result.livePoolTotal?.let { count ->
+                            EtaPreference(
+                                title = "服务端账号池现有 ${count} 个账号",
+                                summary = "通过本次管理员会话实时读取。尚需服务端验证账号有效性与实际额度。",
+                            )
+                        }
+                        result.liveAccounts.forEach { imported ->
+                            EtaPreference(
+                                title = imported.nickname,
+                                summary = "账号：${imported.account} · 区域：${imported.realm}",
+                            )
+                        }
                     }
                 }
             }
