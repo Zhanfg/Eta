@@ -41,8 +41,15 @@ internal object WorkBuddyLocalVault {
         val domain: String = "",
         val enterpriseId: String = "",
         val nickname: String = "",
+        val realmHint: String = "",
     ) {
-        val realm: String get() = if (domain.endsWith("workbuddy.ai", ignoreCase = true)) "global" else "cn"
+        val realm: String get() = when {
+            realmHint.equals("global", ignoreCase = true) -> "global"
+            realmHint.equals("cn", ignoreCase = true) -> "cn"
+            domain.equals("workbuddy.ai", ignoreCase = true) ||
+                domain.endsWith(".workbuddy.ai", ignoreCase = true) -> "global"
+            else -> "cn"
+        }
         fun maskedId(): String = if (uid.length <= 6) "••••" else uid.take(3) + "•••" + uid.takeLast(3)
     }
     data class AccountSummary(val name: String, val maskedId: String, val realm: String)
@@ -94,6 +101,7 @@ internal object WorkBuddyLocalVault {
                 domain = field(v, "domain"),
                 enterpriseId = field(v, "enterpriseId", "enterprise_id"),
                 nickname = field(v, "nickname", "name").take(80),
+                realmHint = field(v, "realm").take(16),
             )
         }
     }
