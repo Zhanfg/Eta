@@ -142,7 +142,7 @@ internal object BuiltinProviders {
             isBuiltIn = true,
             sortOrder = 12,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
-            endpointMode = OpenAiEndpointMode.CHAT_COMPLETIONS,
+            endpointMode = OpenAiEndpointMode.RESPONSES,
         ),
     )
 
