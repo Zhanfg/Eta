@@ -24,6 +24,7 @@ internal object BuiltinProviders {
     const val OPENROUTER_ID = "builtin-openrouter"
     const val XAI_ID = "builtin-xai"
     const val GEMINI_ID = "builtin-gemini"
+    const val WORKBUDDY_ID = "builtin-workbuddy"
 
     val PROVIDERS: List<ProviderSetting> = listOf(
         OpenAiCompatibleProviderSetting(
@@ -132,6 +133,16 @@ internal object BuiltinProviders {
             isBuiltIn = true,
             sortOrder = 11,
             systemPrompt = DEFAULT_SYSTEM_PROMPT,
+        ),
+        OpenAiCompatibleProviderSetting(
+            id = WORKBUDDY_ID,
+            name = "WorkBuddy Manager",
+            baseUrl = "https://workbuddy.example.invalid/v1",
+            sourceType = ProviderSourceTypes.WORKBUDDY,
+            isBuiltIn = true,
+            sortOrder = 12,
+            systemPrompt = DEFAULT_SYSTEM_PROMPT,
+            endpointMode = OpenAiEndpointMode.CHAT_COMPLETIONS,
         ),
     )
 
