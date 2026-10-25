@@ -364,7 +364,8 @@ internal fun WorkBuddyNativeTab(
                         result.liveAccounts.forEach { imported ->
                             EtaPreference(
                                 title = imported.nickname,
-                                summary = "账号：${imported.account} · 区域：${imported.realm}",
+                                summary = "账号：${imported.account} · 区域：${imported.realm} · " +
+                                    "积分：${imported.credits?.toString() ?: "未同步"} · ${imported.poolStatus ?: "状态未知"}",
                             )
                         }
                     }
