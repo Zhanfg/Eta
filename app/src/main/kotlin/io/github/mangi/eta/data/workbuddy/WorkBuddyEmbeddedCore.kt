@@ -100,8 +100,9 @@ internal object WorkBuddyEmbeddedCore {
             if (status != 200 && status != 503) return false
             if (connection.getHeaderField("X-Service") != "workbuddy2api") return false
             val stream = if (status == 200) connection.inputStream else connection.errorStream
-            val body = stream?.use { input -> input.readNBytes(4096).toString(Charsets.UTF_8) }
-                ?: return false
+            val body = stream?.bufferedReader()?.use { reader ->
+                reader.readText().take(4096)
+            } ?: return false
             JSONObject(body).optString("service") == "workbuddy2api"
         } catch (_: Exception) { false } finally { connection.disconnect() }
     }
