@@ -109,7 +109,7 @@ jobs:
           # Test real Go auth-file parsing after restart. The credential is fake
           # and is NEVER sent to Tencent; do not probe /v1/models after insertion.
           printf '%s\n' '{"uid":"local-byte-fixture","accessToken":"fixture-no-login","realm":"cn","nickname":"Synthetic"}' \
-            > "$RUNNER_TEMP/wb-fixture/auths/eta-000.json"
+            > "$RUNNER_TEMP/wb-fixture/auths/workbuddy-000.json"
           # Mobile import path explicitly restarts the native Go core.
           kill "$PID" 2>/dev/null || true
           wait "$PID" 2>/dev/null || true
