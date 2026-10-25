@@ -93,7 +93,16 @@ internal object WorkBuddyEmbeddedCore {
         connection.instanceFollowRedirects = false
         return try {
             connection.requestMethod = "GET"
-            connection.responseCode in 200..299
+            val status = connection.responseCode
+            // Go reports HTTP 503 if all accounts are unavailable, EVEN WHEN THE
+            // SERVICE IS RUNNING. Health must not mistake quota exhaustion for
+            // a failed Android process boot.
+            if (status != 200 && status != 503) return false
+            if (connection.getHeaderField("X-Service") != "workbuddy2api") return false
+            val stream = if (status == 200) connection.inputStream else connection.errorStream
+            val body = stream?.use { input -> input.readNBytes(4096).toString(Charsets.UTF_8) }
+                ?: return false
+            JSONObject(body).optString("service") == "workbuddy2api"
         } catch (_: Exception) { false } finally { connection.disconnect() }
     }
 
