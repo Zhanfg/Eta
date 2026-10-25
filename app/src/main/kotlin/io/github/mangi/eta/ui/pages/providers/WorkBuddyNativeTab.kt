@@ -146,6 +146,118 @@ internal fun WorkBuddyNativeTab(
             }
         }
         item {
+            ProviderSection(title = "电脑登录 → 手机 JSON 导入") {
+                EtaPreference(
+                    title = "原生导入账号订阅",
+                    summary = "在电脑导出 WorkBuddy / CodeBuddy 账号 JSON，传到手机后直接选择文件。无需网页控件；仅上传到你配置的 WorkBuddy Manager。敏感 Token 不会展示或保存于 ETA。",
+                )
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    EtaTextButton(
+                        text = "选择账号 JSON 文件",
+                        enabled = !working,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            jsonPicker.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                        },
+                    )
+                    accountPreview?.let { preview ->
+                        EtaPreference(
+                            title = "待导入 ${preview.count} 个账号",
+                            summary = "文件已在本机通过格式校验。请确保这些账号属于你或已经获得账号持有人授权。",
+                        )
+                        preview.accounts.take(12).forEach { a ->
+                            EtaPreference(
+                                title = a.nickname,
+                                summary = "账号：${a.account} · 区域：${a.realm}",
+                            )
+                        }
+                        if (preview.count > 12) {
+                            EtaPreference(title = "另外 ${preview.count - 12} 个账号未展开")
+                        }
+                    }
+                    TextField(
+                        value = adminUsername,
+                        onValueChange = { adminUsername = it.take(64) },
+                        label = "WorkBuddy 管理员用户名",
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    TextField(
+                        value = adminPassword,
+                        onValueChange = { adminPassword = it },
+                        label = "管理员密码（仅本次上传）",
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    EtaPreference(
+                        title = "安全与重复账号策略",
+                        summary = "仅支持 JSON，单文件最多 2 MB；现有账号不覆盖。服务器要求独立管理员会话，不能用 wbt_ 或 wbk_ 替代。导入成功后账号凭据归你的服务端账号池管理。",
+                    )
+                    EtaTextButton(
+                        text = when {
+                            working -> "处理中…"
+                            confirmImport -> "再次点击确认上传账号"
+                            else -> "确认导入到当前 WorkBuddy 账号池"
+                        },
+                        enabled = !working && selectedAccountJson != null &&
+                            accountPreview != null && adminUsername.isNotBlank() && adminPassword.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (!confirmImport) {
+                                confirmImport = true
+                            } else {
+                                confirmImport = false
+                                val file = selectedAccountJson
+                                if (file != null) {
+                                    runAction {
+                                        val result = try {
+                                            WorkBuddyAccountImport.importAccounts(
+                                                context, file, provider.baseUrl, adminUsername, adminPassword,
+                                            )
+                                        } finally {
+                                            adminPassword = "" // clear on success AND failure
+                                        }
+                                        importResult = result
+                                        if (managementToken.startsWith("wbt_")) {
+                                            pool = runCatching {
+                                                WorkBuddyGateway.accounts(provider.baseUrl, managementToken)
+                                            }.getOrNull()
+                                        }
+                                        message = "导入结果：新增 ${result.added}，已存在 ${result.rejected}，失败 ${result.failed}。请查看账号状态并同步模型列表。"
+                                        selectedAccountJson = null
+                                        accountPreview = null
+                                    }
+                                }
+                            }
+                        },
+                    )
+                    importResult?.let { result ->
+                        EtaPreference(
+                            title = "已成功导入 ${result.imported} 个账号",
+                            summary = "新增 ${result.added} · 拒绝重复/无效 ${result.rejected} · 失败 ${result.failed}；不会静默覆盖已有凭据。",
+                        )
+                        result.livePoolTotal?.let { count ->
+                            EtaPreference(
+                                title = "服务端账号池现有 ${count} 个账号",
+                                summary = "通过本次管理员会话实时读取。尚需服务端验证账号有效性与实际额度。",
+                            )
+                        }
+                        result.liveAccounts.forEach { imported ->
+                            EtaPreference(
+                                title = imported.nickname,
+                                summary = "账号：${imported.account} · 区域：${imported.realm} · " +
+                                    "积分：${imported.credits?.toString() ?: "未同步"} · ${imported.poolStatus ?: "状态未知"}",
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        item {
             ProviderSection(title = "账号池管理（原生）") {
                 EtaPreference(
                     title = "管理令牌",
@@ -257,118 +369,6 @@ internal fun WorkBuddyNativeTab(
                         )
                     }
                     poll?.let { Text("授权状态：$it", style = MiuixTheme.textStyles.footnote2) }
-                }
-            }
-        }
-        item {
-            ProviderSection(title = "电脑登录 → 手机 JSON 导入") {
-                EtaPreference(
-                    title = "原生导入账号订阅",
-                    summary = "在电脑导出 WorkBuddy / CodeBuddy 账号 JSON，传到手机后直接选择文件。无需网页控件；仅上传到你配置的 WorkBuddy Manager。敏感 Token 不会展示或保存于 ETA。",
-                )
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    EtaTextButton(
-                        text = "选择账号 JSON 文件",
-                        enabled = !working,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            jsonPicker.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
-                        },
-                    )
-                    accountPreview?.let { preview ->
-                        EtaPreference(
-                            title = "待导入 ${preview.count} 个账号",
-                            summary = "文件已在本机通过格式校验。请确保这些账号属于你或已经获得账号持有人授权。",
-                        )
-                        preview.accounts.take(12).forEach { a ->
-                            EtaPreference(
-                                title = a.nickname,
-                                summary = "账号：${a.account} · 区域：${a.realm}",
-                            )
-                        }
-                        if (preview.count > 12) {
-                            EtaPreference(title = "另外 ${preview.count - 12} 个账号未展开")
-                        }
-                    }
-                    TextField(
-                        value = adminUsername,
-                        onValueChange = { adminUsername = it.take(64) },
-                        label = "WorkBuddy 管理员用户名",
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    TextField(
-                        value = adminPassword,
-                        onValueChange = { adminPassword = it },
-                        label = "管理员密码（仅本次上传）",
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    EtaPreference(
-                        title = "安全与重复账号策略",
-                        summary = "仅支持 JSON，单文件最多 2 MB；现有账号不覆盖。服务器要求独立管理员会话，不能用 wbt_ 或 wbk_ 替代。导入成功后账号凭据归你的服务端账号池管理。",
-                    )
-                    EtaTextButton(
-                        text = when {
-                            working -> "处理中…"
-                            confirmImport -> "再次点击确认上传账号"
-                            else -> "确认导入到当前 WorkBuddy 账号池"
-                        },
-                        enabled = !working && selectedAccountJson != null &&
-                            accountPreview != null && adminUsername.isNotBlank() && adminPassword.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            if (!confirmImport) {
-                                confirmImport = true
-                            } else {
-                                confirmImport = false
-                                val file = selectedAccountJson
-                                if (file != null) {
-                                    runAction {
-                                        val result = try {
-                                            WorkBuddyAccountImport.importAccounts(
-                                                context, file, provider.baseUrl, adminUsername, adminPassword,
-                                            )
-                                        } finally {
-                                            adminPassword = "" // clear on success AND failure
-                                        }
-                                        importResult = result
-                                        if (managementToken.startsWith("wbt_")) {
-                                            pool = runCatching {
-                                                WorkBuddyGateway.accounts(provider.baseUrl, managementToken)
-                                            }.getOrNull()
-                                        }
-                                        message = "导入结果：新增 ${result.added}，已存在 ${result.rejected}，失败 ${result.failed}。请查看账号状态并同步模型列表。"
-                                        selectedAccountJson = null
-                                        accountPreview = null
-                                    }
-                                }
-                            }
-                        },
-                    )
-                    importResult?.let { result ->
-                        EtaPreference(
-                            title = "已成功导入 ${result.imported} 个账号",
-                            summary = "新增 ${result.added} · 拒绝重复/无效 ${result.rejected} · 失败 ${result.failed}；不会静默覆盖已有凭据。",
-                        )
-                        result.livePoolTotal?.let { count ->
-                            EtaPreference(
-                                title = "服务端账号池现有 ${count} 个账号",
-                                summary = "通过本次管理员会话实时读取。尚需服务端验证账号有效性与实际额度。",
-                            )
-                        }
-                        result.liveAccounts.forEach { imported ->
-                            EtaPreference(
-                                title = imported.nickname,
-                                summary = "账号：${imported.account} · 区域：${imported.realm} · " +
-                                    "积分：${imported.credits?.toString() ?: "未同步"} · ${imported.poolStatus ?: "状态未知"}",
-                            )
-                        }
-                    }
                 }
             }
         }
