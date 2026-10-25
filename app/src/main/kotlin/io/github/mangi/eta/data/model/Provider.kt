@@ -39,6 +39,7 @@ internal object ProviderSourceTypes {
     const val SILICONFLOW = "siliconflow"
     const val OPENROUTER = "openrouter"
     const val WORKBUDDY = "workbuddy"
+    const val WORKBUDDY_LOCAL = "workbuddy_local"
 }
 
 @Serializable
