@@ -82,7 +82,10 @@ jobs:
           trap 'kill "$PID" 2>/dev/null || true' EXIT
           ready=0
           for attempt in $(seq 1 60); do
-            if curl -fsS --max-time 1 http://127.0.0.1:17863/healthz -o "$RUNNER_TEMP/wb-fixture/health.json"; then
+            code=$(curl -sS --max-time 1 -D "$RUNNER_TEMP/wb-fixture/health-headers.txt" \
+              -o "$RUNNER_TEMP/wb-fixture/health.json" -w '%{http_code}' \
+              http://127.0.0.1:17863/healthz || true)
+            if [[ "$code" == 200 || "$code" == 503 ]]; then
               ready=1
               break
             fi
@@ -90,6 +93,9 @@ jobs:
           done
           if [[ "$ready" != 1 ]]; then echo "::error::Upstream process did not start"; exit 1; fi
           python3 -m json.tool "$RUNNER_TEMP/wb-fixture/health.json" >/dev/null
+          grep -Eiq '^X-Service: workbuddy2api' "$RUNNER_TEMP/wb-fixture/health-headers.txt"
+          python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data["service"]=="workbuddy2api"' \
+            "$RUNNER_TEMP/wb-fixture/health.json"
           UNAUTH=$(curl -sS -o /dev/null -w '%{http_code}' \
             http://127.0.0.1:17863/v1/models)
           if [[ "$UNAUTH" != 401 && "$UNAUTH" != 403 ]]; then
