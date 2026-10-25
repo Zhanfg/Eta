@@ -53,7 +53,7 @@ internal object WorkBuddyLocalVault {
         fun maskedId(): String = if (uid.length <= 6) "••••" else uid.take(3) + "•••" + uid.takeLast(3)
     }
     data class AccountSummary(val name: String, val maskedId: String, val realm: String)
-    data class ImportResult(val added: Int, val duplicates: Int, val total: Int)
+    data class ImportResult(val added: Int, val refreshed: Int, val total: Int)
 
     fun init(applicationContext: Context) { context = applicationContext.applicationContext }
     private fun root(): Context = checkNotNull(context) { "本地账号库尚未初始化，请重启 ETA" }
@@ -152,14 +152,24 @@ internal object WorkBuddyLocalVault {
         val incoming = parse(bytes)
         return synchronized(lock) {
             val old = read()
-            val seen = old.mapTo(HashSet()) { it.uid }
+            val positions = old.withIndex().associate { it.value.uid to it.index }.toMutableMap()
             var added = 0
-            for (account in incoming) if (seen.add(account.uid)) {
-                old.add(account)
-                added++
+            var refreshed = 0
+            for (account in incoming) {
+                val existing = positions[account.uid]
+                if (existing == null) {
+                    positions[account.uid] = old.size
+                    old.add(account)
+                    added++
+                } else {
+                    // Explicitly confirmed import means a fresh desktop export may
+                    // update an expired access/refresh token for this same UID.
+                    old[existing] = account
+                    refreshed++
+                }
             }
-            if (added > 0) write(old)
-            ImportResult(added, incoming.size - added, old.size)
+            if (added + refreshed > 0) write(old)
+            ImportResult(added, refreshed, old.size)
         }
     }
     fun select(): Account = synchronized(lock) {
