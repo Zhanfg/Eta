@@ -33,6 +33,20 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
     private fun origin(account: WorkBuddyLocalVault.Account): String =
         if (account.realm == "global") "https://www.workbuddy.ai" else "https://www.codebuddy.cn"
 
+    /** Pure response parser; never include upstream JSON or credentials in errors. */
+    internal fun parseRefreshResponse(reply: String): JSONObject {
+        val parsed = runCatching { JSONObject(reply) }.getOrNull()
+            ?: throw IllegalStateException("CodeBuddy 账号刷新响应无效")
+        if (parsed.has("code") && parsed.optInt("code", -1) != 0) {
+            throw IllegalStateException("CodeBuddy 账号刷新被拒绝，请在电脑重新登录")
+        }
+        val payload = parsed.optJSONObject("data") ?: parsed
+        require(payload.optString("accessToken").isNotBlank()) {
+            "CodeBuddy 刷新未返回 Access Token"
+        }
+        return payload
+    }
+
     internal fun refreshIfNecessary(input: WorkBuddyLocalVault.Account): WorkBuddyLocalVault.Account {
         val now = System.currentTimeMillis() / 1000
         // Unknown expiration is NOT evidence that the token has expired.
@@ -59,14 +73,7 @@ internal object WorkBuddyDirectProvider : AgentProviderClient {
         val payload = refreshClient.newCall(headers).execute().use { res ->
             if (!res.isSuccessful) throw IllegalStateException("CodeBuddy 账号刷新失败：HTTP ${res.code}，请在电脑重新登录")
             val reply = res.peekBody(65_536).string()
-            val parsed = runCatching { JSONObject(reply) }.getOrNull()
-                ?: throw IllegalStateException("CodeBuddy 账号刷新响应无效")
-            if (parsed.has("code") && parsed.optInt("code", -1) != 0) {
-                throw IllegalStateException("CodeBuddy 账号刷新被拒绝，请在电脑重新登录")
-            }
-            // CodeBuddy can return a bare {accessToken, refreshToken, expiresIn}
-            // or a {code:0, data:{...}} envelope depending on service version.
-            parsed.optJSONObject("data") ?: parsed
+            parseRefreshResponse(reply)
         }
         val newToken = payload.optString("accessToken")
         require(newToken.isNotBlank()) { "CodeBuddy 刷新未返回 Access Token" }
