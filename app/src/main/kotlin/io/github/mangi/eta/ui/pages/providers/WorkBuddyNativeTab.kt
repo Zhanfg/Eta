@@ -114,6 +114,10 @@ internal fun WorkBuddyNativeTab(
         item {
             ProviderSection(title = "WorkBuddy 原生网关") {
                 EtaPreference(
+                    title = "电脑导出 JSON、手机直接使用？",
+                    summary = "请返回服务商列表，选择「WorkBuddy · 本地账号」。这里是需要已部署 HTTPS 管理服务的远程模式。",
+                )
+                EtaPreference(
                     title = "独立账号池 / API 网关",
                     summary = "ETA 直接使用 WorkBuddy Manager 的 API；无需 WebUI。请先在配置页填写你的 HTTPS 网关 /v1 地址。",
                 )
