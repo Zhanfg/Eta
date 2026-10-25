@@ -34,6 +34,7 @@ import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalModels
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
 import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
 import io.github.mangi.eta.data.workbuddy.WorkBuddyCoreDashboard
+import io.github.mangi.eta.data.workbuddy.WorkBuddyBytePathProbe
 import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaTextButton
 import kotlinx.coroutines.CancellationException
@@ -62,6 +63,8 @@ internal fun WorkBuddyLocalTab(
     var availableModels by remember { mutableStateOf<Int?>(null) }
     var backendStatus by remember { mutableStateOf("未检测") }
     var coreSummary by remember { mutableStateOf<WorkBuddyCoreDashboard.Summary?>(null) }
+    var confirmPaidProbe by remember { mutableStateOf(false) }
+    var lastProbe by remember { mutableStateOf<WorkBuddyBytePathProbe.Outcome?>(null) }
     var modelChoices by remember { mutableStateOf<List<Model>>(emptyList()) }
 
     LaunchedEffect(provider.id) {
@@ -221,6 +224,32 @@ internal fun WorkBuddyLocalTab(
                         summary = if (value.budgetLimit > 0)
                             "预算上限 ${value.budgetLimit}（仅统计上游确实返回的用量）"
                         else "未设置积分预算上限；已用量仅统计上游可观测记录",
+                    )
+                }
+                EtaTextButton(
+                    text = if (confirmPaidProbe) "再次点击确认消耗积分测试" else "真实订阅 SSE 字节通路测试",
+                    enabled = !busy && WorkBuddyEmbeddedCore.isBundled(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    onClick = {
+                        if (!confirmPaidProbe) {
+                            confirmPaidProbe = true
+                            message = "该测试会从你的真实订阅中调用一次模型、可能扣除积分。再次点击才会发送请求。"
+                        } else {
+                            confirmPaidProbe = false
+                            work {
+                                val outcome = WorkBuddyBytePathProbe.execute()
+                                lastProbe = outcome
+                                message = "真实通路通过：HTTP ${outcome.responseCode}，${outcome.sseEvents} 个 SSE 事件，" +
+                                    "收到 ${outcome.visibleCharacters} 个可见字符，流正常结束。"
+                            }
+                        }
+                    },
+                )
+                lastProbe?.let { value ->
+                    EtaPreference(
+                        title = if (value.completed) "最近一次真实通路测试通过" else "流式调用未完成",
+                        summary = "HTTP ${value.responseCode} · SSE ${value.sseEvents} 个事件 · " +
+                            "可见字符 ${value.visibleCharacters} 个（不记录具体聊天内容）",
                     )
                 }
                 EtaTextButton(
