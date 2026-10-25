@@ -10,6 +10,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.AccountTree
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.ImportContacts
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Terminal
+import io.github.mangi.eta.R
 import androidx.compose.material.icons.rounded.TheaterComedy
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -90,6 +100,22 @@ internal fun EtaPreferenceIcon(
     val glyphSize = when (icon) {
         Icons.Rounded.Extension, Icons.Rounded.TheaterComedy, Icons.AutoMirrored.Rounded.MenuBook -> 22.dp
         else -> EtaPreferenceDefaults.IconSize
+    }
+    val replacement = when (icon) {
+        Icons.Rounded.Cloud -> R.drawable.ic_eta_lucide_cloud
+        Icons.Rounded.Psychology -> R.drawable.ic_eta_lucide_brain
+        Icons.Rounded.Layers -> R.drawable.ic_eta_lucide_layers
+        Icons.AutoMirrored.Rounded.MenuBook, Icons.Rounded.ImportContacts -> R.drawable.ic_eta_lucide_book_open
+        Icons.Rounded.AccountTree -> R.drawable.ic_eta_lucide_network
+        Icons.Rounded.Dashboard -> R.drawable.ic_eta_lucide_layout_dashboard
+        Icons.Rounded.Palette -> R.drawable.ic_eta_lucide_palette
+        Icons.Rounded.Security -> R.drawable.ic_eta_lucide_shield_check
+        Icons.Rounded.Terminal -> R.drawable.ic_eta_lucide_terminal
+        else -> null
+    }
+    if (replacement != null) {
+        EtaPreferenceLucideIcon(drawableRes = replacement, modifier = modifier, tint = tint, enabled = enabled)
+        return
     }
     Box(modifier.size(EtaPreferenceDefaults.IconSize), contentAlignment = Alignment.Center) {
         Icon(
