@@ -1,0 +1,85 @@
+name: WorkBuddy Android Core Feasibility
+
+on:
+  push:
+    branches: [feature/workbuddy-native-integration]
+    paths:
+      - .github/workflows/workbuddy-android-core.yml
+      - docs/WORKBUDDY_ANDROID_PORT.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wbcore-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-byte-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache: false
+      - name: Download pinned official WorkBuddy release and verify every input byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/wb-release"
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/ithtelab/workbuddy-manager/releases/download/v2.9.0/workbuddy-manager-v2.9.0.tar.gz \
+            -o "$RUNNER_TEMP/wb-release/release.tar.gz"
+          printf '%s  %s\n' \
+            '7f1a37b9bd9987c6210a41e58360e37658e71c4c305fbe85c64b25305bb7133e' \
+            "$RUNNER_TEMP/wb-release/release.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/wb-release/unpack"
+          tar --no-same-owner -xzf "$RUNNER_TEMP/wb-release/release.tar.gz" -C "$RUNNER_TEMP/wb-release/unpack"
+          mapfile -t candidates < <(find "$RUNNER_TEMP/wb-release/unpack" -type f -path '*/upstream/go.mod')
+          if [[ "${#candidates[@]}" != 1 ]]; then
+            echo "::error::Expected one embedded official Go upstream; found ${#candidates[@]}"
+            exit 1
+          fi
+          echo "WB_UPSTREAM=$(dirname "${candidates[0]}")" >> "$GITHUB_ENV"
+          test -f "$(dirname "${candidates[0]}")/LICENSE"
+          test -f "$(dirname "${candidates[0]}")/cmd/server/main.go"
+      - name: Go core host tests and all-package byte compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$WB_UPSTREAM"
+          go mod verify
+          go test ./internal/... ./cmd/server/...
+          go build ./...
+      - name: Cross-compile actual Go gateway for Android arm64
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/wb-native/arm64-v8a"
+          (
+            cd "$WB_UPSTREAM"
+            GOOS=android GOARCH=arm64 CGO_ENABLED=0 \
+              go build -trimpath -ldflags='-s -w' \
+              -o "$RUNNER_TEMP/wb-native/arm64-v8a/workbuddy2api" ./cmd/server
+          )
+          target="$RUNNER_TEMP/wb-native/arm64-v8a/workbuddy2api"
+          test -s "$target"
+          file "$target" | tee "$RUNNER_TEMP/wb-native/file.txt"
+          readelf -h "$target" | tee "$RUNNER_TEMP/wb-native/elf-header.txt"
+          readelf -l "$target" | tee "$RUNNER_TEMP/wb-native/program-headers.txt"
+          grep -Eq 'Machine:.*AArch64' "$RUNNER_TEMP/wb-native/elf-header.txt"
+          grep -Eq 'Type:.*DYN' "$RUNNER_TEMP/wb-native/elf-header.txt"
+          grep -q '/system/bin/linker64' "$RUNNER_TEMP/wb-native/program-headers.txt"
+          sha256sum "$target" | tee "$RUNNER_TEMP/wb-native/SHA256SUMS"
+      - name: Upload Android ELF feasibility evidence (not an installable APK)
+        uses: actions/upload-artifact@v4
+        with:
+          name: wbcore-android-arm64-experimental
+          path: ${{ runner.temp }}/wb-native/
+          if-no-files-found: error
+          retention-days: 14
