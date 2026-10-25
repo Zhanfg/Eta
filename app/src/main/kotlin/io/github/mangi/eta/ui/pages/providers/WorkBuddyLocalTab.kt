@@ -113,7 +113,7 @@ internal fun WorkBuddyLocalTab(
                     preview?.let { value ->
                         EtaPreference(
                             title = "准备导入 ${value.count} 个账号",
-                            summary = "凭据仅在上传确认后写入 Android Keystore 加密的本地私有存储；不会存储于 ETA Provider/API 配置。",
+                            summary = "确认后写入本机加密账号库；同 UID 的旧凭据会被这次电脑导出的新凭据替换，用于续期，不影响其他账号。",
                         )
                         value.accounts.take(10).forEach { a ->
                             EtaPreference(title = a.nickname, summary = "${a.account} · ${a.realm}")
@@ -134,7 +134,7 @@ internal fun WorkBuddyLocalTab(
                                         accounts = withContext(Dispatchers.IO) { WorkBuddyLocalVault.summaries() }
                                         selectedFile = null
                                         preview = null
-                                        message = "本地导入：新增 ${imported.added}、跳过重复 ${imported.duplicates}、共 ${imported.total} 个账号。正在同步可用模型。"
+                                        message = "本地导入：新增 ${imported.added}、更新凭据 ${imported.refreshed}、共 ${imported.total} 个账号。正在同步可用模型。"
                                         runCatching {
                                             val models = WorkBuddyLocalModels.fetch()
                                             ProviderRepository.replaceModels(provider.id, models)
