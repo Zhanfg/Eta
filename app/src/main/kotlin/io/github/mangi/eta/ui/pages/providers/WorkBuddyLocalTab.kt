@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,12 +65,6 @@ internal fun WorkBuddyLocalTab(
     var confirmPaidProbe by remember { mutableStateOf(false) }
     var lastProbe by remember { mutableStateOf<WorkBuddyBytePathProbe.Outcome?>(null) }
     var modelChoices by remember { mutableStateOf<List<Model>>(emptyList()) }
-
-    LaunchedEffect(provider.id) {
-        accounts = withContext(Dispatchers.IO) {
-            runCatching { WorkBuddyLocalVault.summaries() }.getOrDefault(emptyList())
-        }
-    }
 
     LaunchedEffect(provider.id) {
         accounts = try {
