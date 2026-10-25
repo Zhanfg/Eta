@@ -112,28 +112,51 @@ internal object WorkBuddyLocalModels {
         )
     }
 
+    /** The authoritative catalog comes from the locally running Go pool. */
     suspend fun fetch(): List<Model> = withContext(Dispatchers.IO) {
-        val account = WorkBuddyDirectProvider.refreshIfNecessary(WorkBuddyLocalVault.select())
-        val global = account.realm == "global"
-        val host = if (global) "https://www.workbuddy.ai" else "https://copilot.tencent.com"
-        val enterprisePaths = if (global) listOf(
-            "/v2/enterprises/personal/models", "/console/enterprises/personal/models"
-        ) else listOf("/console/enterprises/personal/models")
-        // Try enterprise endpoints in priority order. An empty catalog is not success.
-        var enterprise: List<Model> = emptyList()
-        for (path in enterprisePaths) {
-            val response = runCatching { fetchResponse(host, path, account) }.getOrNull()
-            enterprise = parseCatalog(response, global, v3 = false)
-            if (enterprise.isNotEmpty()) break
+        val endpoint = WorkBuddyEmbeddedCore.ensureStarted()
+        val request = Request.Builder()
+            .url(endpoint.baseUrl + "/models")
+            .header("Authorization", "Bearer ${endpoint.apiKey}")
+            .header("Accept", "application/json")
+            .get().build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IllegalStateException(
+                "本地 WB 核心模型查询失败（HTTP ${response.code}）"
+            )
+            val document = runCatching { JSONObject(response.peekBody(262_144).string()) }.getOrNull()
+                ?: throw IllegalStateException("本地 WB 核心返回无效模型 JSON")
+            val data = document.optJSONArray("data") ?: throw IllegalStateException(
+                "本地 WB 核心模型列表为空，请检查订阅权限"
+            )
+            val models = LinkedHashMap<String, Model>()
+            for (i in 0 until data.length()) {
+                val item = data.optJSONObject(i) ?: continue
+                val id = item.optString("id").trim()
+                if (id.isBlank() || id in models) continue
+                val declaredTool = if (item.has("supports_tool_call")) {
+                    item.optBoolean("supports_tool_call")
+                } else null
+                val declaredImage = if (item.has("supports_images")) {
+                    item.optBoolean("supports_images")
+                } else null
+                val declaredReasoning = if (item.has("supports_reasoning")) {
+                    item.optBoolean("supports_reasoning")
+                } else null
+                models[id] = Model(
+                    id = UUID.nameUUIDFromBytes(("workbuddy:$id").toByteArray(Charsets.UTF_8)).toString(),
+                    modelId = id,
+                    displayName = item.optString("name").ifBlank { id },
+                    source = ModelSource.REMOTE,
+                    contextWindow = item.optInt("context_length", 0).takeIf { it > 0 },
+                    toolCall = declaredTool,
+                    attachment = declaredImage,
+                    reasoning = declaredReasoning,
+                )
+            }
+            require(models.isNotEmpty()) { "本地 WB 核心未返回任何可用模型" }
+            models.values.toList()
         }
-        val v3 = parseCatalog(
-            runCatching { fetchResponse(host, "/v3/config", account) }.getOrNull(), global, v3 = true
-        )
-        val unique = LinkedHashMap<String, Model>()
-        (v3 + enterprise).forEach { unique.putIfAbsent(it.modelId, it) }
-        require(unique.isNotEmpty()) {
-            "无法获取 CodeBuddy 模型目录：请检查账号的登录状态、CN/Global 区域及实际模型权益"
-        }
-        unique.values.toList()
     }
+
 }
