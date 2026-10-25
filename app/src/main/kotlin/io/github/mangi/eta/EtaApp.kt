@@ -50,6 +50,7 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         super.onCreate()
         Prefs.initLocal(this)
         WorkBuddyLocalVault.init(this)
+        WorkBuddyEmbeddedCore.init(this)
         if (!AppProcessPolicy.shouldInitializeFullRuntime(Application.getProcessName(), packageName)) {
             return
         }
