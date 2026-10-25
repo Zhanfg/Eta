@@ -1,0 +1,167 @@
+package io.github.mangi.eta.data.workbuddy
+
+import android.content.Context
+import android.net.Uri
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import java.io.File
+import java.security.KeyStore
+import java.util.concurrent.atomic.AtomicInteger
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+
+/**
+ * Local, on-device credentials: no external WorkBuddy Manager installation is
+ * required. Android Keystore AES-GCM protects the file in noBackupFilesDir.
+ * This vault is deliberately not connected to Xposed preferences or logs.
+ */
+internal object WorkBuddyLocalVault {
+    private const val ALIAS = "eta.workbuddy.local.v1"
+    private const val FILE = "workbuddy-accounts-v1.bin"
+    private const val LIMIT = 2 * 1024 * 1024
+    private val codec = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val nextIndex = AtomicInteger()
+    private val lock = Any()
+    @Volatile private var context: Context? = null
+
+    @Serializable
+    data class Account(
+        val uid: String,
+        val accessToken: String,
+        val refreshToken: String = "",
+        val expiresAt: Long = 0,
+        val domain: String = "",
+        val enterpriseId: String = "",
+        val nickname: String = "",
+    ) {
+        val realm: String get() = if (domain.endsWith("workbuddy.ai", ignoreCase = true)) "global" else "cn"
+        fun maskedId(): String = if (uid.length <= 6) "••••" else uid.take(3) + "•••" + uid.takeLast(3)
+    }
+    data class AccountSummary(val name: String, val maskedId: String, val realm: String)
+    data class ImportResult(val added: Int, val duplicates: Int, val total: Int)
+
+    fun init(applicationContext: Context) { context = applicationContext.applicationContext }
+    private fun root(): Context = checkNotNull(context) { "本地账号库尚未初始化，请重启 ETA" }
+    private fun path() = File(root().noBackupFilesDir, FILE)
+    private fun key(): SecretKey {
+        val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        (store.getKey(ALIAS, null) as? SecretKey)?.let { return it }
+        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+        generator.init(KeyGenParameterSpec.Builder(ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256).build())
+        return generator.generateKey()
+    }
+    private fun JsonObject.str(name: String): String = (this[name] as? JsonPrimitive)?.content.orEmpty()
+    private fun JsonObject.num(name: String): Long = str(name).toLongOrNull() ?: 0
+
+    private fun parse(bytes: ByteArray): List<Account> {
+        WorkBuddyAccountImport.parsePreview(bytes)
+        val value = codec.parseToJsonElement(bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF"))
+        val sources = when (value) {
+            is JsonArray -> value.toList()
+            is JsonObject -> (value["accounts"] as? JsonArray)?.toList() ?: listOf(value)
+            else -> emptyList()
+        }
+        fun field(v: JsonObject, vararg keys: String): String {
+            val auth = v["auth"] as? JsonObject
+            val account = v["account"] as? JsonObject
+            for (part in listOfNotNull(auth, account, v)) {
+                for (name in keys) part.str(name).takeIf { it.isNotBlank() }?.let { return it }
+            }
+            return ""
+        }
+        return sources.map { item ->
+            val v = item as JsonObject
+            Account(
+                uid = field(v, "uid", "user_id"),
+                accessToken = field(v, "accessToken", "access_token"),
+                refreshToken = field(v, "refreshToken", "refresh_token"),
+                expiresAt = field(v, "expiresAt", "expires_at").toLongOrNull()
+                    ?: field(v, "expiresIn", "expires_in").toLongOrNull()?.let {
+                        System.currentTimeMillis() / 1000 + it
+                    } ?: 0,
+                domain = field(v, "domain"),
+                enterpriseId = field(v, "enterpriseId", "enterprise_id"),
+                nickname = field(v, "nickname", "name").take(80),
+            )
+        }
+    }
+
+    private fun read(): MutableList<Account> {
+        val file = path()
+        if (!file.exists()) return mutableListOf()
+        val data = file.readBytes()
+        require(data.size > 16 && data.size < LIMIT * 2) { "本地账号库文件损坏" }
+        val nonce = data.copyOfRange(0, 12)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, nonce))
+        }
+        return codec.decodeFromString<List<Account>>(cipher.doFinal(data, 12, data.size - 12).toString(Charsets.UTF_8)).toMutableList()
+    }
+
+    private fun write(accounts: List<Account>) {
+        require(accounts.size <= 200) { "本地账号数量超过上限" }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.ENCRYPT_MODE, key())
+        }
+        val plaintext = codec.encodeToString(accounts).toByteArray()
+        val encoded = cipher.iv + cipher.doFinal(plaintext)
+        val target = path()
+        val tmp = File(target.parentFile, "$FILE.tmp")
+        tmp.outputStream().use { it.write(encoded); it.flush() }
+        check(tmp.renameTo(target)) { "保存本地账号失败" }
+    }
+
+    // No getters expose bearer tokens outside the provider runtime.
+    fun hasAccounts(): Boolean = synchronized(lock) { read().isNotEmpty() }
+    fun summaries(): List<AccountSummary> = synchronized(lock) {
+        read().map { AccountSummary(it.nickname.ifBlank { "CodeBuddy 账号" }, it.maskedId(), it.realm) }
+    }
+    fun importJson(context: Context, uri: Uri): ImportResult {
+        val input = context.contentResolver.openInputStream(uri) ?: error("无法读取 JSON 文件")
+        val bytes = input.use { stream ->
+            val output = java.io.ByteArrayOutputStream()
+            val chunk = ByteArray(8192)
+            while (true) {
+                val n = stream.read(chunk)
+                if (n < 0) break
+                require(output.size() + n <= LIMIT) { "文件超过 2 MB" }
+                output.write(chunk, 0, n)
+            }
+            output.toByteArray()
+        }
+        val incoming = parse(bytes)
+        return synchronized(lock) {
+            val old = read()
+            val seen = old.mapTo(HashSet()) { it.uid }
+            var added = 0
+            for (account in incoming) if (seen.add(account.uid)) {
+                old.add(account)
+                added++
+            }
+            if (added > 0) write(old)
+            ImportResult(added, incoming.size - added, old.size)
+        }
+    }
+    fun select(): Account = synchronized(lock) {
+        val all = read()
+        require(all.isNotEmpty()) { "尚未导入本地 WorkBuddy JSON，请先在「本地账号」页面导入" }
+        all[Math.floorMod(nextIndex.getAndIncrement(), all.size)]
+    }
+    fun update(account: Account) = synchronized(lock) {
+        val old = read()
+        val i = old.indexOfFirst { it.uid == account.uid }
+        if (i >= 0) { old[i] = account; write(old) }
+    }
+}
