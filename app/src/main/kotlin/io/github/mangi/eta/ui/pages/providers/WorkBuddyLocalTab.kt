@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +55,15 @@ internal fun WorkBuddyLocalTab(
     var message by remember { mutableStateOf("直接导入电脑端的账号 JSON，不需要 API 地址、服务器或管理员密码。") }
     var accounts by remember { mutableStateOf<List<WorkBuddyLocalVault.AccountSummary>>(emptyList()) }
     var availableModels by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(provider.id) {
+        accounts = try {
+            withContext(Dispatchers.IO) { WorkBuddyLocalVault.summaries() }
+        } catch (_: Exception) {
+            message = "无法读取本地加密账号库。请确认手机密钥库正常。"
+            emptyList()
+        }
+    }
 
     fun work(operation: suspend () -> Unit) {
         if (busy) return
