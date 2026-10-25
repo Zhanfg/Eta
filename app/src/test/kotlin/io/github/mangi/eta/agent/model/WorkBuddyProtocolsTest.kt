@@ -33,7 +33,7 @@ class WorkBuddyProtocolsTest {
         assertSame(AnthropicMessagesProvider, ProviderClientFactory.getClient(configuration(OpenAiEndpointMode.MESSAGES)))
         assertSame(OpenAiChatCompletionsProvider, ProviderClientFactory.getClient(configuration(OpenAiEndpointMode.CHAT_COMPLETIONS)))
         assertSame(OpenAiChatCompletionsProvider, ProviderClientFactory.getClient(configuration(OpenAiEndpointMode.MESSAGES, ProviderSourceTypes.CUSTOM)))
-        assertSame(WorkBuddyDirectProvider, ProviderClientFactory.getClient(configuration(OpenAiEndpointMode.CHAT_COMPLETIONS, ProviderSourceTypes.WORKBUDDY_LOCAL)))
+        assertSame(WorkBuddyEmbeddedProvider, ProviderClientFactory.getClient(configuration(OpenAiEndpointMode.CHAT_COMPLETIONS, ProviderSourceTypes.WORKBUDDY_LOCAL)))
     }
 
     @Test fun messagesRouteNormalizesSharedGatewayBase() {
