@@ -179,19 +179,13 @@ internal object WorkBuddyLocalVault {
         read().map { AccountSummary(it.nickname.ifBlank { "CodeBuddy 账号" }, it.maskedId(), it.realm) }
     }
     fun importJson(context: Context, uri: Uri): ImportResult {
-        val input = context.contentResolver.openInputStream(uri) ?: error("无法读取 JSON 文件")
-        val bytes = input.use { stream ->
-            val output = java.io.ByteArrayOutputStream()
-            val chunk = ByteArray(8192)
-            while (true) {
-                val n = stream.read(chunk)
-                if (n < 0) break
-                require(output.size() + n <= LIMIT) { "文件超过 2 MB" }
-                output.write(chunk, 0, n)
-            }
-            output.toByteArray()
+        // Standalone JSON and official accounts.zip have one consistent, vetted
+        // parser. Never copy raw credentials to the UI or shared storage.
+        val incoming = WorkBuddyAccountImport.readImportDocuments(context, uri).flatMap(::parse)
+        require(incoming.size in 1..200) { "导入账号数量必须为 1–200 个" }
+        require(incoming.map { it.uid }.toSet().size == incoming.size) {
+            "导入包中存在重复 UID，请先整理"
         }
-        val incoming = parse(bytes)
         return synchronized(lock) {
             val old = read()
             val positions = old.withIndex().associate { it.value.uid to it.index }.toMutableMap()
