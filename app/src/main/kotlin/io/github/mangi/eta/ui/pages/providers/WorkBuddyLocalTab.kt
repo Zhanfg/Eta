@@ -110,15 +110,15 @@ internal fun WorkBuddyLocalTab(
         item {
             ProviderSection(title = "本地订阅 · 无需服务器") {
                 EtaPreference(
-                    title = "从电脑导入 CodeBuddy JSON",
-                    summary = "在电脑登录你的账号并导出 JSON，然后发送到这台手机。ETA 不运行 WebUI、不要求 Manager 登录、不需要复制任何 API Key。",
+                    title = "从电脑导入 WorkBuddy 订阅",
+                    summary = "电脑导出的 WorkBuddy JSON 或 accounts.zip，可直接在手机导入。无需解压、远程 Manager、WebUI 或 API Key。",
                 )
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     EtaTextButton(
-                        text = "选择本机 JSON 文件",
+                        text = "选择 JSON / accounts.zip 订阅文件",
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !busy,
-                        onClick = { chooseJson.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                        onClick = { chooseJson.launch(arrayOf("application/json", "application/zip", "application/x-zip-compressed", "application/octet-stream", "text/plain")) },
                     )
                     preview?.let { value ->
                         EtaPreference(
