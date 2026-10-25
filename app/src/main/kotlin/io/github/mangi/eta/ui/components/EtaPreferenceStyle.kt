@@ -1,5 +1,7 @@
 package io.github.mangi.eta.ui.components
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.painterResource
+import io.github.mangi.eta.ui.app.readableForeground
+import io.github.mangi.eta.ui.app.readableTextRoles
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.app.LocalAppearanceSettings
@@ -50,7 +56,7 @@ internal fun EtaPreferenceTheme(content: @Composable () -> Unit) {
     } else {
         colors
     }
-    MiuixTheme(colors = pageColors, content = content)
+    MiuixTheme(colors = pageColors.readableTextRoles(), content = content)
 }
 
 @Composable
@@ -90,7 +96,8 @@ internal fun EtaPreferenceIcon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(glyphSize),
-            tint = if (enabled) tint else MiuixTheme.colorScheme.disabledOnSurface,
+            tint = if (enabled) readableForeground(tint, MiuixTheme.colorScheme.surfaceVariant, minimum = 3.0)
+                else MiuixTheme.colorScheme.disabledOnSurface,
         )
     }
 }
@@ -102,4 +109,29 @@ internal fun EtaPreferenceDivider(hasLeading: Boolean = true, modifier: Modifier
         thickness = 0.33.dp,
         color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.1f),
     )
+}
+
+/**
+ * Unified 24dp Lucide outline icon slot. Vector drawables remain screen-density
+ * independent; tint is chosen from the current dynamic palette with 3:1 contrast.
+ */
+@Composable
+internal fun EtaPreferenceLucideIcon(
+    @DrawableRes drawableRes: Int,
+    modifier: Modifier = Modifier,
+    tint: Color = MiuixTheme.colorScheme.onSurface,
+    enabled: Boolean = true,
+) {
+    val colors = MiuixTheme.colorScheme
+    val foreground = if (enabled) {
+        readableForeground(tint, colors.surfaceVariant, minimum = 3.0)
+    } else colors.disabledOnSurface
+    Box(modifier.size(EtaPreferenceDefaults.IconSize), contentAlignment = Alignment.Center) {
+        Image(
+            painter = painterResource(drawableRes),
+            contentDescription = null,
+            modifier = Modifier.size(EtaPreferenceDefaults.IconSize),
+            colorFilter = ColorFilter.tint(foreground),
+        )
+    }
 }
