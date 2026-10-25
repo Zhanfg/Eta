@@ -35,7 +35,11 @@ internal object WorkBuddyAccountImport {
 
     data class AccountPreview(val account: String, val nickname: String, val realm: String)
     data class Preview(val count: Int, val accounts: List<AccountPreview>)
-    data class Result(val added: Int, val updated: Int, val rejected: Int, val failed: Int) {
+    data class Result(
+        val added: Int, val updated: Int, val rejected: Int, val failed: Int,
+        val livePoolTotal: Int? = null,
+        val liveAccounts: List<AccountPreview> = emptyList(),
+    ) {
         val imported get() = added + updated
     }
 
@@ -145,11 +149,10 @@ internal object WorkBuddyAccountImport {
             require(loginJson.str("role") == "admin") { "此账号不是管理员，无法导入账号 JSON" }
             cookie.name + "=" + cookie.value
         }
-        try {
-            val fileBody = bytes.toRequestBody("application/json".toMediaType())
+        val fileBody = bytes.toRequestBody("application/json".toMediaType())
             val form = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("files", "eta-workbuddy-import.json", fileBody).build()
-            client.newCall(
+            val imported = client.newCall(
                 Request.Builder().url(uploadUrl)
                     .header("Cookie", session)
                     .header("Accept", "application/json")
@@ -169,9 +172,33 @@ internal object WorkBuddyAccountImport {
                     failed = tally("failed"),
                 )
             }
-        } finally {
-            // This cookie is intentionally not in a CookieJar and never written to storage.
-            // The service-issued session itself expires according to WorkBuddy settings.
+            // Refresh via the *same* ephemeral session. This works even when the
+            // phone has no separately configured wbt_ management API token.
+            // Upload outcome is still returned if the optional list read fails.
+            runCatching {
+                val listUrl = origin.newBuilder().addPathSegments("api/accounts").build()
+                client.newCall(Request.Builder().url(listUrl).header("Cookie", session).get().build())
+                    .execute().use { response ->
+                        if (!response.isSuccessful) return@runCatching imported
+                        val body = response.body?.string()?.let {
+                            json.parseToJsonElement(it) as? JsonObject
+                        } ?: return@runCatching imported
+                        val entries = (body["accounts"] as? JsonArray).orEmpty()
+                        imported.copy(
+                            livePoolTotal = body.str("total").toIntOrNull(),
+                            liveAccounts = entries.take(30).mapNotNull { entry ->
+                                val account = entry as? JsonObject ?: return@mapNotNull null
+                                val uid = account.str("uid")
+                                AccountPreview(
+                                    account = if (uid.length <= 6) "••••" else uid.take(3) + "•••" + uid.takeLast(3),
+                                    nickname = account.str("nickname").ifBlank { "未命名账号" }.take(48),
+                                    realm = account.str("realm").ifBlank { "自动识别" }.take(24),
+                                )
+                            },
+                        )
+                    }
+            }.getOrDefault(imported)
+        // Session exists only as a local string for this call. No cookie jar.
         }
     }
 }
