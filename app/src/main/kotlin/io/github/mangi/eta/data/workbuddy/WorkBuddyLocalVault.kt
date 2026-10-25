@@ -167,6 +167,18 @@ internal object WorkBuddyLocalVault {
         require(all.isNotEmpty()) { "尚未导入本地 WorkBuddy JSON，请先在「本地账号」页面导入" }
         all[Math.floorMod(nextIndex.getAndIncrement(), all.size)]
     }
+    /**
+     * Stable account within an Agent session, including iterative tool calls.
+     * Blind round-robin selection on every model call changes OAuth identity
+     * between turns of one tool loop, causing quota/caching/context failures.
+     * Separate sessions distribute deterministically without retaining a map of
+     * user session IDs or extra secrets in memory.
+     */
+    fun selectForSession(sessionId: String): Account = synchronized(lock) {
+        val all = read()
+        require(all.isNotEmpty()) { "请先在「本地账号」导入 WorkBuddy JSON" }
+        all[Math.floorMod(sessionId.hashCode(), all.size)]
+    }
     fun update(account: Account) = synchronized(lock) {
         val old = read()
         val i = old.indexOfFirst { it.uid == account.uid }
