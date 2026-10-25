@@ -135,6 +135,18 @@ internal object WorkBuddyAccountImport {
             ).build()
         val loginUrl = origin.newBuilder().addPathSegments("api/login").build()
         val uploadUrl = origin.newBuilder().addPathSegments("api/accounts/upload").build()
+        // Verify the intended WorkBuddy Manager service before sending a human
+        // administrator's password or account credentials to a configured URL.
+        val healthUrl = origin.newBuilder().addPathSegments("api/healthz").build()
+        client.newCall(Request.Builder().url(healthUrl).get().build()).execute().use { response ->
+            require(response.isSuccessful) { "无法验证 WorkBuddy 服务地址（HTTP ${response.code}）" }
+            val body = response.body?.string()?.let {
+                json.parseToJsonElement(it) as? JsonObject
+            }
+            require(body?.str("service") == "workbuddy-manager") {
+                "目标地址不是已识别的 WorkBuddy Manager；已取消发送管理员凭据"
+            }
+        }
         val loginBody = buildJsonObject {
             put("username", username.trim())
             put("password", password)
