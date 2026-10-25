@@ -8,6 +8,7 @@ import io.github.mangi.eta.data.provider.ProviderConnectionProfile
 internal object ProviderClientFactory {
 
     fun getClient(config: AgentModelClient.ModelConfig): AgentProviderClient {
+        if (config.providerSourceType == ProviderSourceTypes.WORKBUDDY_LOCAL) return WorkBuddyDirectProvider
         ProviderConnectionProfile.forAuthMode(config.authMode)?.let { profile ->
             return when (profile.endpointMode) {
                 OpenAiEndpointMode.RESPONSES -> OpenAiResponsesProvider
