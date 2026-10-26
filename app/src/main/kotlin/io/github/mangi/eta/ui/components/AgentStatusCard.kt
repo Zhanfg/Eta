@@ -85,19 +85,19 @@ private fun StatusIndicator(status: RunStatusUi) {
     when (status) {
         RunStatusUi.Running -> InfiniteProgressIndicator(
             modifier = Modifier.size(18.dp),
-            color = MiuixTheme.colorScheme.primary,
+            color = status.color(),
         )
         RunStatusUi.Success -> Icon(
             imageVector = Icons.Rounded.Check,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.primary,
+            tint = status.color(),
         )
         RunStatusUi.Failed -> Icon(
             imageVector = Icons.Rounded.Close,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.primary,
+            tint = status.color(),
         )
         RunStatusUi.Cancelled -> Icon(
             imageVector = Icons.Rounded.MoreHoriz,
