@@ -63,6 +63,12 @@ fun AgentStatusCard(
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
+                    text = activeRun.status.label(),
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = activeRun.status.color(),
+                )
+                Spacer(modifier = Modifier.width(EtaDesignTokens.SpacingXs))
+                Text(
                     text = activeRun.elapsedLabel,
                     modifier = Modifier.weight(1f),
                     style = MiuixTheme.textStyles.footnote1,
@@ -82,28 +88,30 @@ fun AgentStatusCard(
 
 @Composable
 private fun StatusIndicator(status: RunStatusUi) {
+    val statusColor = status.color()
+    val description = status.label()
     when (status) {
         RunStatusUi.Running -> InfiniteProgressIndicator(
             modifier = Modifier.size(18.dp),
-            color = MiuixTheme.colorScheme.primary,
+            color = statusColor,
         )
         RunStatusUi.Success -> Icon(
             imageVector = Icons.Rounded.Check,
-            contentDescription = null,
+            contentDescription = description,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.primary,
+            tint = statusColor,
         )
         RunStatusUi.Failed -> Icon(
             imageVector = Icons.Rounded.Close,
-            contentDescription = null,
+            contentDescription = description,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.primary,
+            tint = statusColor,
         )
         RunStatusUi.Cancelled -> Icon(
             imageVector = Icons.Rounded.MoreHoriz,
-            contentDescription = null,
+            contentDescription = description,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+            tint = statusColor,
         )
     }
 }
