@@ -69,7 +69,7 @@ fun AgentAppTheme(
         val base = if (appearance.monetEnabled && appearance.pureBlackEnabled && isDark) {
             colors.copy(background = Color.Black, surface = Color.Black)
         } else colors
-        base.readableTextRoles()
+        base.withEtaSurfaceLadder().readableTextRoles()
     }
 
     LaunchedEffect(isDark) { onResolvedDarkModeChange(isDark) }
