@@ -244,6 +244,20 @@ internal fun WorkBuddyLocalTab(
                             "冷却 ${value.cooling} · 已禁用 ${value.disabled} · " +
                             "并发已满 ${value.inFlightFull}",
                     )
+                    value.accounts.take(20).forEach { account ->
+                        EtaPreference(
+                            title = "${account.nickname} · ${account.state}",
+                            summary = "${account.maskedId} · ${account.realm} · " +
+                                "池内记录积分 ${account.creditsRecorded} · " +
+                                "成功 ${account.successCount} 次",
+                        )
+                    }
+                    if (value.accounts.size > 20) {
+                        EtaPreference(
+                            title = "另外 ${value.accounts.size - 20} 个账号",
+                            summary = "为减少手机长列表渲染，详情请分批检查",
+                        )
+                    }
                     EtaPreference(
                         title = "活跃粘性会话：${value.stickySessions}",
                         summary = "来自 workbuddy2api 内存中的真实会话路由状态",
@@ -348,7 +362,7 @@ internal fun WorkBuddyLocalTab(
                 )
                 EtaPreference(
                     title = "与其他模式的关系",
-                    summary = "本地账号模式已改用官方 Go 网关协议和账号池；OpenAI Responses / Anthropic Messages 仍是管理网关可选的兼容转换层，不代表上游原生能力。",
+                    summary = "核心使用 Go 网关真实账号池与 SSE。Responses / Anthropic Messages 在独立管理网关中属于转换接口；本地直连默认走原生 Chat 协议，不会伪装成尚未支持的接口。",
                 )
             }
         }
