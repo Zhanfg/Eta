@@ -39,13 +39,13 @@ internal fun EtaFeatureCard(
             Spacer(Modifier.weight(1f))
             action?.invoke()
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(EtaDesignTokens.SpacingXs))
         Text(
             text = title, style = MiuixTheme.textStyles.body1, fontWeight = FontWeight.Medium,
             color = MiuixTheme.colorScheme.onSurfaceContainer,
             maxLines = 2, overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(EtaDesignTokens.SpacingXxs))
         Text(
             text = summary, style = MiuixTheme.textStyles.body2,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
