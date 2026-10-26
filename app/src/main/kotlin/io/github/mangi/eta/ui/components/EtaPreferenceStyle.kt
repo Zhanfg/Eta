@@ -54,7 +54,7 @@ internal object EtaPreferenceDefaults {
     val IconTextGap = 16.dp
     val ContentStart = SidePadding + IconSize + IconTextGap
     fun contentStart(hasLeading: Boolean) = if (hasLeading) ContentStart else SidePadding
-    val RowMinHeight = 52.dp
+    val RowMinHeight = io.github.mangi.eta.ui.app.EtaDesignTokens.PreferenceMinHeight
 }
 
 @Composable
