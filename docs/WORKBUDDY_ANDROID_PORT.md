@@ -71,8 +71,8 @@ A screen is done only when data comes from an identified backend source and ever
 
 G0. Provenance: official release SHA verified; no unsigned fork substituted. **PASS** when CI verifies.
 G1. Go upstream source test and Android arm64 ELF crosscompile, with actual output hash and program interpreter. **PASS** when CI verifies.
-G2. No-account host-level HTTP integration: process start, real response headers/body from `/healthz`, auth denied, authenticated `/v1/models`. **CI pending**.
-G3. ETA APK contains `lib/arm64-v8a/libwbcore.so`, Gradle Lint, tests, Debug build pass. **CI pending**.
+G2. No-account host-level HTTP integration: process start, real response headers/body from `/healthz`, auth denied, authenticated `/v1/models`. **PASS at baseline a1fcfe89 (host only)**.
+G3. ETA APK contains `lib/arm64-v8a/libwbcore.so`, Gradle Lint, tests, Debug build pass. **PASS at baseline a1fcfe89; new commits require fresh CI**.
 G4. Android arm64 actual runtime: subprocess executes from installed APK with SELinux, UID sandbox, Android linker, 127.0.0.1 loopback and real `X-Service: workbuddy2api` bytes. **NOT YET VERIFIED**.
 G5. Real user-authorized account import, token refresh, manager status/credit and actual available models on OnePlus/ColorOS. **NOT YET VERIFIED**.
 G6. Streaming Chat and tool_calls from authorized subscription, response time, cancellation, retry/failure taxonomy, cross-model/multi-round session. **NOT YET VERIFIED**.
@@ -93,3 +93,21 @@ This iteration uses **engineering practices from** the user's earlier Kelivo age
 6. **Regression evidence**: JUnit tests lock down stale-file precedence and error-message confidentiality; Go-byte and Android-APK tests remain independent gates.
 
 **Outstanding blockers remain:** physical Android SELinux/ProcessBuilder execution smoke on a real OnePlus, authorized account-based chat/tool-call verification, manager frontend feature parity, and removing plaintext Go token snapshots during live runtime. A later CI success is still not proof of those gates.
+
+## KELIVO-derived stabilization pass (2026-10-26)
+
+Principles applied from the previously agreed Kelivo UI/runtime workflow:
+1. **Status-first, not card decoration**: UI has an explicit seven-stage model (`WorkBuddyReadiness`) and one next action. Having an APK or saved JSON is **not** a validated chat session.
+2. **Progressive disclosure**: account import and the status summary are visible immediately; detailed runtime diagnostics and credit-consuming SSE tests are collapsed unless requested. Avoid oversize lists in 360/390/430dp compact layouts.
+3. **Recover before replacing state**: on next launch or Go process restart, recover upstream-refreshed tokens from private snapshots into AES-GCM vault; never silently delete snapshots on KeyStore failure.
+4. **Make imports reversible**: stop/recover the old Go runtime before importing a newer desktop export. Prevent stale Go snapshots from overwriting newer `expiresAt` credentials.
+5. **Isolate live tasks**: `WorkBuddyEmbeddedCore.withActiveRequest` takes a request lease so stop/import cannot kill an active Agent SSE/tool loop halfway through.
+6. **Use authoritative backend fields**: status and credit panels consume Go `/status` fields, including `needs_relogin`, `cooling`, `cool_remaining_sec`, `credits` and `success_count`. Account UID is masked and credentials are never passed to Compose.
+7. **Tests are evidence, not release**: pure state transitions, old/new credential precedence and credential-safe JSON projections have JVM regression tests. Go byte-level and Android APK CI must rerun at the latest commit; OnePlus/ColorOS real device remains mandatory.
+
+### Limitations remaining (block stable release)
+- Persisting plaintext Go auth JSON is currently unavoidable with the upstream directory-based interface. A private 0700 directory and startup cleanup reduce exposure but are not memory-only isolation; redesigning Go to accept an in-memory or Binder supplied token set is a stronger end state.
+- Native Manager parity is incomplete: scheduled check-in controls, per-account enable/disable, detailed expenses/audit and several management settings are absent from ETA.
+- Current Android executable bridge uses a loopback TCP port and ephemeral bearer token. A private Binder/Unix-domain socket would narrow access further, once Go is adapted.
+- G4/G5/G6 are still unverified on physical Android hardware with an authorized account. The SSE UI probe itself may consume credits and is opt-in.
+- No formal-release or main-branch merge until core startup, stream completion, import/restart behavior, theme contrast and state migration pass device checks.
