@@ -16,9 +16,23 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.app.LocalPlatformDensity
+import io.github.mangi.eta.ui.components.EtaDesignTokens
 
-private val WideScreenMinWidth = 600.dp
-private val MaxPageContentWidth = 800.dp
+private val WideScreenMinWidth = EtaDesignTokens.CompactBreakpoint
+
+/**
+ * Responsive reading width grows continuously on tablets/desktop. The fixed
+ * 800.dp cap made content excessively narrow on wide screens; jumping from
+ * 800 to 1040 at a breakpoint creates a distracting discontinuity.
+ */
+internal fun adaptiveContentWidth(viewport: Dp): Dp {
+    val extra = (viewport - 1040.dp)
+        .coerceIn(0.dp, EtaDesignTokens.MaxWidePageWidth - EtaDesignTokens.MaxReadablePageWidth)
+    return EtaDesignTokens.MaxReadablePageWidth + extra
+}
+
+internal fun adaptiveSidePadding(viewport: Dp): Dp =
+    ((viewport - adaptiveContentWidth(viewport)) / 2).coerceAtLeast(0.dp)
 
 @Composable
 fun rememberIsWideScreen(): Boolean {
@@ -38,14 +52,8 @@ fun WidePageContent(
     modifier: Modifier = Modifier,
     content: @Composable (sidePadding: Dp) -> Unit,
 ) {
-    val isWideScreen = rememberIsWideScreen()
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val sidePadding = if (isWideScreen) {
-            ((maxWidth - MaxPageContentWidth) / 2).coerceAtLeast(0.dp)
-        } else {
-            0.dp
-        }
-        content(sidePadding)
+        content(adaptiveSidePadding(maxWidth))
     }
 }
 
