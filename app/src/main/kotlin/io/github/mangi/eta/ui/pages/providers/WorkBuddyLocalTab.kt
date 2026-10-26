@@ -32,6 +32,7 @@ import io.github.mangi.eta.data.workbuddy.WorkBuddyAccountImport
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalModels
 import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
 import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
+import io.github.mangi.eta.data.workbuddy.WorkBuddySetupGate
 import io.github.mangi.eta.data.workbuddy.WorkBuddyCoreDashboard
 import io.github.mangi.eta.data.workbuddy.WorkBuddyBytePathProbe
 import io.github.mangi.eta.ui.components.EtaPreference
@@ -61,6 +62,7 @@ internal fun WorkBuddyLocalTab(
     var accounts by remember { mutableStateOf<List<WorkBuddyLocalVault.AccountSummary>>(emptyList()) }
     var availableModels by remember { mutableStateOf<Int?>(null) }
     var backendStatus by remember { mutableStateOf("未检测") }
+    var modelDiscoveryVerified by remember(provider.id) { mutableStateOf(false) }
     var coreSummary by remember { mutableStateOf<WorkBuddyCoreDashboard.Summary?>(null) }
     var confirmPaidProbe by remember { mutableStateOf(false) }
     var lastProbe by remember { mutableStateOf<WorkBuddyBytePathProbe.Outcome?>(null) }
@@ -103,10 +105,30 @@ internal fun WorkBuddyLocalTab(
         }
     }
 
+    val setupStage = WorkBuddySetupGate.derive(
+        binaryInstalled = WorkBuddyEmbeddedCore.isBundled(),
+        accountCount = accounts.size,
+        coreRunning = WorkBuddyEmbeddedCore.isRunning(),
+        modelCount = if (modelDiscoveryVerified) availableModels ?: 0 else 0,
+        streamingVerified = lastProbe?.let { it.completed && it.visibleCharacters > 0 } == true,
+    )
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = PaddingValues(start = contentSidePadding, end = contentSidePadding),
     ) {
+        item {
+            ProviderSection(title = "WorkBuddy 使用进度") {
+                EtaPreference(
+                    title = when (setupStage) {
+                        WorkBuddySetupGate.Stage.VERIFIED -> "已完成文本流式通路验证"
+                        WorkBuddySetupGate.Stage.NO_BINARY -> "原生核心未打包"
+                        else -> "尚未完成实际对话验收"
+                    },
+                    summary = WorkBuddySetupGate.userHint(setupStage),
+                )
+            }
+        }
         item {
             ProviderSection(title = "本地订阅 · 无需服务器") {
                 EtaPreference(
@@ -149,6 +171,8 @@ internal fun WorkBuddyLocalTab(
                                         }
                                         selectedFile = null
                                         preview = null
+                                        lastProbe = null
+                                        modelDiscoveryVerified = false
                                         message = "本地导入：新增 ${imported.added}、更新凭据 ${imported.refreshed}、共 ${imported.total} 个账号。正在同步可用模型。"
                                         runCatching {
                                             val models = WorkBuddyLocalModels.fetch()
@@ -156,6 +180,7 @@ internal fun WorkBuddyLocalTab(
                                             modelChoices = ProviderRepository.providerById(provider.id)?.models.orEmpty()
                                             RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
                                             availableModels = models.size
+                                            modelDiscoveryVerified = true
                                         }.onFailure {
                                             message = "账号已安全保存，但模型列表未同步：${it.javaClass.simpleName}。请检查网络后点击「重新同步模型」。"
                                         }.onSuccess {
@@ -174,7 +199,7 @@ internal fun WorkBuddyLocalTab(
                 EtaPreference(
                     title = "运行时状态：$backendStatus",
                     summary = if (WorkBuddyEmbeddedCore.isBundled())
-                        "APK 已包含 Android ARM64 Go 网关；需要启动验证才代表可用"
+                        "已打包原生核心 ≠ 手机启动成功 ≠ 有效订阅 ≠ 模型可用；下方检查均为真实验证"
                     else "本 APK 没有打包 Go 原生核心，无法运行完整的本地账号池",
                 )
                 EtaTextButton(
@@ -281,6 +306,7 @@ internal fun WorkBuddyLocalTab(
                         modelChoices = ProviderRepository.providerById(provider.id)?.models.orEmpty()
                         RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
                         availableModels = models.size
+                        modelDiscoveryVerified = true
                         message = "已同步 ${models.size} 个模型，请到「模型」页启用。"
                     } },
                 )
