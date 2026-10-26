@@ -21,8 +21,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 
 internal object EtaControlDefaults {
-    val ButtonCornerRadius = 22.dp
-    val ButtonMinHeight = 44.dp
+    val ButtonCornerRadius = io.github.mangi.eta.ui.app.EtaDesignTokens.ButtonRadius
+    val ButtonMinHeight = io.github.mangi.eta.ui.app.EtaDesignTokens.MinTouchHeight
     val ButtonPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
     val DialogInsideMargin = DpSize(24.dp, 24.dp)
     val DialogOutsideMargin = DpSize(16.dp, 16.dp)
