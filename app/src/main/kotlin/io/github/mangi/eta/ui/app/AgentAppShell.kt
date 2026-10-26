@@ -261,7 +261,7 @@ private fun AgentTopBar(
     }
 }
 
-private val TopBarMenuIconSize = 20.dp
+private val TopBarMenuIconSize = io.github.mangi.eta.ui.components.EtaDesignTokens.SpaceLg
 
 /**
  * 首页顶栏溢出菜单。WindowListPopup 以父布局为锚点，因此与触发按钮包在同一个 Box 中，
