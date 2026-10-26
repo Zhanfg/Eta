@@ -165,15 +165,19 @@ internal fun WorkBuddyLocalTab(
                                     confirmImport = false
                                     val uri = selectedFile
                                     if (uri != null) work {
+                                        // Preflight before modifying the user's durable vault:
+                                        // active requests must finish and old Go token refreshes
+                                        // must be recovered *before* the new desktop JSON wins.
+                                        if (WorkBuddyEmbeddedCore.isBundled()) {
+                                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
+                                            backendStatus = "待启动"
+                                            coreSummary = null
+                                            lastProbe = null
+                                        }
                                         val imported = withContext(Dispatchers.IO) {
                                             WorkBuddyLocalVault.importJson(context, uri)
                                         }
                                         accounts = withContext(Dispatchers.IO) { WorkBuddyLocalVault.summaries() }
-                                        // Force the embedded Go pool to reload the new encrypted imports.
-                                        if (WorkBuddyEmbeddedCore.isBundled()) {
-                                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
-                                            backendStatus = "待启动"
-                                        }
                                         selectedFile = null
                                         preview = null
                                         message = "本地导入：新增 ${imported.added}、更新凭据 ${imported.refreshed}、共 ${imported.total} 个账号。正在同步可用模型。"
