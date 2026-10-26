@@ -18,11 +18,14 @@ val StatusIdle: Color @Composable get() = MiuixTheme.colorScheme.onSurfaceVarian
 // ── RunStatusUi 映射 ──────────────────────────────────────────────────
 
 @Composable
-fun RunStatusUi.color(): Color = when (this) {
-    RunStatusUi.Running -> StatusRunning
-    RunStatusUi.Success -> StatusSuccess
-    RunStatusUi.Failed -> StatusError
-    RunStatusUi.Cancelled -> StatusIdle
+fun RunStatusUi.color(): Color {
+    val tones = etaSemanticTone()
+    return when (this) {
+        RunStatusUi.Running -> MiuixTheme.colorScheme.primary
+        RunStatusUi.Success -> tones.success
+        RunStatusUi.Failed -> tones.danger
+        RunStatusUi.Cancelled -> tones.quiet
+    }
 }
 
 @Composable
@@ -36,11 +39,14 @@ fun RunStatusUi.label(): String = stringResource(when (this) {
 // ── PermissionStatusUi 映射 ───────────────────────────────────────────
 
 @Composable
-fun PermissionStatusUi.color(): Color = when (this) {
-    PermissionStatusUi.Available -> StatusIdle
-    PermissionStatusUi.Warning -> StatusWarning
-    PermissionStatusUi.Missing -> StatusError
-    PermissionStatusUi.Disabled -> StatusIdle
+fun PermissionStatusUi.color(): Color {
+    val tones = etaSemanticTone()
+    return when (this) {
+        PermissionStatusUi.Available -> tones.success
+        PermissionStatusUi.Warning -> tones.warning
+        PermissionStatusUi.Missing -> tones.danger
+        PermissionStatusUi.Disabled -> tones.quiet
+    }
 }
 
 @Composable
