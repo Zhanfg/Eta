@@ -32,6 +32,25 @@ internal object WorkBuddyEmbeddedCore {
     @Volatile private var context: Context? = null
     private var running: java.lang.Process? = null
     private var endpoint: Endpoint? = null
+    private var activeAgentRequests: Int = 0
+
+    /**
+     * A model request holds a lease for its entire SSE/tool generation. Do not
+     * kill the Go pool during an in-flight ETA Agent operation.
+     */
+    fun <T> withActiveRequest(block: (Endpoint) -> T): T {
+        val current = synchronized(lock) {
+            val e = ensureStarted()
+            activeAgentRequests++
+            e
+        }
+        try {
+            return block(current)
+        } finally {
+            synchronized(lock) { activeAgentRequests-- }
+        }
+    }
+
 
     fun init(ctx: Context) { context = ctx.applicationContext }
 
@@ -228,6 +247,9 @@ internal object WorkBuddyEmbeddedCore {
      * AES-GCM Keystore vault. Do not print or return any raw tokens.
      */
     fun stop() = synchronized(lock) {
+        check(activeAgentRequests == 0) {
+            "仍有 ${activeAgentRequests} 个 Agent 调用运行中，结束后才能停止或重新导入订阅"
+        }
         val process = running
         process?.destroy()
         if (process != null) {
