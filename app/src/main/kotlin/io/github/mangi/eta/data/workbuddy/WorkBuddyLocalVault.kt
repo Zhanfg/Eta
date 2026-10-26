@@ -155,6 +155,10 @@ internal object WorkBuddyLocalVault {
     internal fun canRecoverToken(oldExpiry: Long, candidateExpiry: Long): Boolean =
         oldExpiry <= 0L || candidateExpiry >= oldExpiry
 
+    /** A desktop import always wins over a snapshot left by an older Go process. */
+    internal fun canRecoverSnapshot(snapshotModifiedAt: Long, vaultModifiedAt: Long): Boolean =
+        snapshotModifiedAt > 0 && (vaultModifiedAt <= 0 || snapshotModifiedAt >= vaultModifiedAt)
+
     fun ingestCoreRefreshes(directory: File): Int = synchronized(lock) {
         val known = read()
         if (known.isEmpty() || !directory.isDirectory) return@synchronized 0
@@ -167,7 +171,7 @@ internal object WorkBuddyLocalVault {
                     if (file.length() > 65_536) return@forEach
                     // Manually imported credentials newer than this orphaned
                     // Go file win, even if expiration timestamps are equal.
-                    if (file.lastModified() < vaultSavedAt) return@forEach
+                    if (!canRecoverSnapshot(file.lastModified(), vaultSavedAt)) return@forEach
                     val raw = org.json.JSONObject(file.readText(Charsets.UTF_8))
                     val auth = raw.optJSONObject("auth") ?: raw
                     val account = raw.optJSONObject("account") ?: raw
