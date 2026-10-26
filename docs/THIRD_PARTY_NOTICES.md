@@ -42,6 +42,12 @@ Eta 的功能图标使用 AndroidX Compose Material Icons 的 Rounded 系列，�
 
 Eta 的应用图标取材自 Google [AI Edge Gallery](https://github.com/google-ai-edge/gallery) 的应用图标，转换为 VectorDrawable 并保留安全留白，通知图标为其单色变体。AI Edge Gallery 采用 [Apache License 2.0](https://github.com/google-ai-edge/gallery/blob/main/LICENSE)。
 
+## Lucide 统一导航与设置图标
+
+Eta 在聊天入口、设置类别及功能导航中使用从 [Lucide Icons](https://github.com/lucide-icons/lucide) 官方 SVG 独立转换而成的 Android VectorDrawable，包括 cloud、brain、layers、book-open、network、user-round、layout-dashboard、palette、terminal、shield-check。原始图标采用 **ISC License**，许可文本见本页下方“Lucide Atom”小节。
+
+只使用 Lucide 官方授权图标及 ETA 自编写的 Android Compose 组件；并未复制 Kelivo 的 Flutter 源码、主题组件或 AGPL-3.0 资源。
+
 ## Lucide Atom
 
 思考图标使用 [Lucide Atom](https://github.com/lucide-icons/lucide/blob/main/icons/atom.svg)，以本地 VectorDrawable 资源保存，不依赖 Lucide 图标库。该图标采用 ISC License：
