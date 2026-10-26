@@ -13,8 +13,10 @@ internal object ProviderUrls {
     fun openAiModelsUrl(baseUrl: String): String =
         appendPath(baseUrl, "models")
 
-    fun anthropicMessagesUrl(baseUrl: String): String =
-        appendPath(baseUrl, "v1/messages")
+    fun anthropicMessagesUrl(baseUrl: String): String {
+        val base = normalizeBaseUrl(baseUrl)
+        return appendPath(base.removeSuffix("/v1"), "v1/messages")
+    }
 
     fun anthropicModelsUrl(baseUrl: String): String =
         appendPath(baseUrl, "v1/models")

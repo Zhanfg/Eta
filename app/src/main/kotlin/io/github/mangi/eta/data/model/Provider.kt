@@ -13,6 +13,7 @@ internal object ProviderTypes {
 internal object OpenAiEndpointMode {
     const val CHAT_COMPLETIONS = "chat_completions"
     const val RESPONSES = "responses"
+    const val MESSAGES = "anthropic_messages"
 }
 
 internal object ProviderAuthModes {
@@ -37,6 +38,8 @@ internal object ProviderSourceTypes {
     const val STEPFUN = "stepfun"
     const val SILICONFLOW = "siliconflow"
     const val OPENROUTER = "openrouter"
+    const val WORKBUDDY = "workbuddy"
+    const val WORKBUDDY_LOCAL = "workbuddy_local"
 }
 
 @Serializable

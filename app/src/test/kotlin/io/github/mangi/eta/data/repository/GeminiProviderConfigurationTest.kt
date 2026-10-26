@@ -103,11 +103,11 @@ class GeminiProviderConfigurationTest {
         ProviderRepository.ensureBuiltInsMerged()
         val providers = ProviderRepository.allProviders()
         assertEquals(source, providers.first())
-        assertTrue(providers.last() is GeminiProviderSetting)
-        assertEquals(BuiltinProviders.GEMINI_ID, providers.last().id)
+        val gemini = requireNotNull(providers.singleOrNull { it.id == BuiltinProviders.GEMINI_ID })
+        assertTrue(gemini is GeminiProviderSetting)
         assertEquals(source.id, SettingsDataStore.settings().selectedProviderId)
         assertEquals(source.models.single().id, SettingsDataStore.settings().selectedModelId)
-        assertEquals(3, providers.last().models.size)
+        assertEquals(3, gemini.models.size)
     }
 
     @Test

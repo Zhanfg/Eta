@@ -80,6 +80,7 @@ import io.github.mangi.eta.ui.components.EtaPreferenceDivider
 import io.github.mangi.eta.ui.components.EtaPreferenceGroup
 import io.github.mangi.eta.ui.components.EtaPreferenceGroupTitle
 import io.github.mangi.eta.ui.components.EtaPreferenceIcon
+import io.github.mangi.eta.ui.components.EtaPreferenceLucideIcon
 import io.github.mangi.eta.ui.components.EtaSwitchPreference
 import io.github.mangi.eta.ui.components.EtaWindowDialog
 import io.github.mangi.eta.ui.components.LanguagePreference
@@ -260,8 +261,7 @@ private fun SettingsPageContent(
                         title = stringResource(R.string.ui_model_provider_e8c7f5),
                         summary = providerSummary,
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Cloud,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_cloud,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },
@@ -297,8 +297,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.ui_memory_b55ff5),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.AutoMirrored.Rounded.MenuBook,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_book_open,
                                 tint = EtaPreferenceColors.Orange,
                             )
                         },
@@ -309,8 +308,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.route_skills),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.ImportContacts,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_book_open,
                                 tint = EtaPreferenceColors.Green,
                             )
                         },
@@ -321,8 +319,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.route_mcp_servers),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.AccountTree,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_network,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },
@@ -333,8 +330,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = "角色",
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.SportsBar,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_user_round,
                                 tint = EtaPreferenceColors.Orange,
                             )
                         },
@@ -349,7 +345,7 @@ private fun SettingsPageContent(
                 EtaPreferenceGroup {
                     EtaArrowPreference(
                         title = stringResource(R.string.settings_tools_list),
-                        startAction = { EtaPreferenceIcon(Icons.Rounded.Dashboard, tint = EtaPreferenceColors.Green) },
+                        startAction = { EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_layout_dashboard, tint = EtaPreferenceColors.Green) },
                         onClick = { onNavigate(AppRoute.Tools) },
                     )
 
@@ -433,7 +429,7 @@ private fun SettingsPageContent(
                 EtaPreferenceGroup {
                     EtaArrowPreference(
                         title = stringResource(R.string.capability_enhancements),
-                        startAction = { EtaPreferenceIcon(Icons.Rounded.Security, tint = EtaPreferenceColors.Blue) },
+                        startAction = { EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_shield_check, tint = EtaPreferenceColors.Blue) },
                         onClick = { onNavigate(AppRoute.SystemEnhance) },
                     )
                 }
@@ -446,8 +442,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.ui_eta_system_assistant_003e9b),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.SupportAgent,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_brain,
                                 tint = EtaPreferenceColors.Green,
                             )
                         },
@@ -628,8 +623,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.appearance_title),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Palette,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_palette,
                                 tint = EtaPreferenceColors.Orange,
                             )
                         },
@@ -666,8 +660,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.ui_floating_window_permissions_076b77),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Layers,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_layers,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },
@@ -826,8 +819,7 @@ private fun SettingsPageContent(
                         title = stringResource(R.string.ui_about_github_star_title),
                         summary = stringResource(R.string.ui_about_github_star_hint),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Code,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_terminal,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },
