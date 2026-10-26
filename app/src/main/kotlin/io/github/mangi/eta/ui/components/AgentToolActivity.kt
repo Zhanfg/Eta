@@ -134,8 +134,8 @@ internal fun ToolActivityRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = WorkRowHeight)
-                .clip(RoundedCornerShape(10.dp))
+                .heightIn(min = if (hasDetail) EtaDesignTokens.MinimumTapTarget else WorkRowHeight)
+                .clip(RoundedCornerShape(EtaDesignTokens.SmallControlRadius))
                 .then(if (hasDetail) Modifier.clickable { expanded = !expanded } else Modifier)
                 .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
