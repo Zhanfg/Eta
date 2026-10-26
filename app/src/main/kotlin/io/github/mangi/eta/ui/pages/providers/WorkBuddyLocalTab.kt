@@ -35,6 +35,7 @@ import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
 import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
 import io.github.mangi.eta.data.workbuddy.WorkBuddyCoreDashboard
 import io.github.mangi.eta.data.workbuddy.WorkBuddyBytePathProbe
+import io.github.mangi.eta.data.workbuddy.WorkBuddyFailure
 import io.github.mangi.eta.data.workbuddy.workBuddyReadiness
 import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaTextButton
@@ -90,11 +91,8 @@ internal fun WorkBuddyLocalTab(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                // Do not render raw credential-bearing upstream responses.
-                message = when (error) {
-                    is IllegalArgumentException, is IllegalStateException -> error.message?.take(180) ?: "操作失败"
-                    else -> "操作失败（${error.javaClass.simpleName}），请检查文件、网络和账号状态"
-                }
+                // Stable, sanitized support codes, never raw upstream error text.
+                message = WorkBuddyFailure.describe(error)
             } finally { busy = false }
         }
     }
