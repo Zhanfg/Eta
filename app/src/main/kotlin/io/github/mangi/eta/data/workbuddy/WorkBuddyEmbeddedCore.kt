@@ -59,6 +59,23 @@ internal object WorkBuddyEmbeddedCore {
         Os.chmod(file.absolutePath, 384) // 0600: Android app UID only
     }
 
+    /**
+     * Recovery-first restart. A killed Android process may leave the Go core's
+     * refreshed credentials on disk. Merge them into the Keystore *before*
+     * rewriting any auth file. Never delete snapshots when decryption fails.
+     */
+    private fun recoverPrivateSnapshots(ctx: Context) {
+        val authDir = File(baseDir(ctx), "auths")
+        val snapshots = authDir.listFiles()?.filter {
+            it.isFile && it.name.startsWith("workbuddy-") && it.extension == "json"
+        }.orEmpty()
+        if (snapshots.isEmpty()) return
+        WorkBuddyLocalVault.ingestCoreRefreshes(authDir)
+        snapshots.forEach { file ->
+            check(file.delete()) { "无法清理旧账号快照；已暂停启动，避免泄漏凭据" }
+        }
+    }
+
     private fun writeAccounts(ctx: Context): Int {
         val root = File(baseDir(ctx), "auths")
         root.mkdirs()
@@ -120,6 +137,9 @@ internal object WorkBuddyEmbeddedCore {
         val ctx = checkNotNull(context) { "ETA 尚未初始化 WorkBuddy 运行时" }
         val binary = File(ctx.applicationInfo.nativeLibraryDir, "libwbcore.so")
         check(binary.isFile) { "APK 未打包 Android ARM64 Go 核心。请使用带原生核心的验证包" }
+        // KELIVO-style reversible recovery: persist existing state before making
+        // changes, including when a previous process was killed by Android.
+        stop()
         val accounts = writeAccounts(ctx)
         require(accounts > 0) { "请先导入 WorkBuddy 账号 JSON" }
 
@@ -199,15 +219,11 @@ internal object WorkBuddyEmbeddedCore {
             runCatching { process.waitFor(3, TimeUnit.SECONDS) }
             if (process.isAlive) process.destroyForcibly()
         }
-        val home = context?.let(::baseDir)
-        if (home != null) {
-            runCatching { WorkBuddyLocalVault.ingestCoreRefreshes(File(home, "auths")) }
-            File(home, "auths").listFiles()?.filter {
-                it.name.startsWith("workbuddy-") && it.extension == "json"
-            }?.forEach { it.delete() }
-        }
         running = null
         endpoint = null
+        // Fail closed: a vault/Keystore error must never silently purge the
+        // last refreshed credentials. Snapshots remain private for recovery.
+        context?.let { recoverPrivateSnapshots(it) }
     }
 
     /** Re-read JSON after confirmed import. Never reload while requests run. */
