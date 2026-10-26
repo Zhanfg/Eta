@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.app.LocalAppearanceSettings
+import io.github.mangi.eta.ui.app.etaAccessibleText
 import top.yukonga.miuix.kmp.basic.CardColors
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
@@ -32,13 +33,13 @@ internal object EtaPreferenceColors {
 }
 
 internal object EtaPreferenceDefaults {
-    val SidePadding = 16.dp
-    val GroupSpacing = 16.dp
-    val IconSize = 24.dp
-    val IconTextGap = 16.dp
+    val SidePadding = EtaDesignTokens.SpaceMd
+    val GroupSpacing = EtaDesignTokens.SpaceMd
+    val IconSize = EtaDesignTokens.IconSize
+    val IconTextGap = EtaDesignTokens.SpaceMd
     val ContentStart = SidePadding + IconSize + IconTextGap
     fun contentStart(hasLeading: Boolean) = if (hasLeading) ContentStart else SidePadding
-    val RowMinHeight = 52.dp
+    val RowMinHeight = EtaDesignTokens.PreferenceRowHeight
 }
 
 @Composable
@@ -50,7 +51,7 @@ internal fun EtaPreferenceTheme(content: @Composable () -> Unit) {
     } else {
         colors
     }
-    MiuixTheme(colors = pageColors, content = content)
+    MiuixTheme(colors = pageColors.etaAccessibleText(), content = content)
 }
 
 @Composable
@@ -100,6 +101,6 @@ internal fun EtaPreferenceDivider(hasLeading: Boolean = true, modifier: Modifier
     HorizontalDivider(
         modifier = modifier.padding(start = EtaPreferenceDefaults.contentStart(hasLeading), end = EtaPreferenceDefaults.SidePadding),
         thickness = 0.33.dp,
-        color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.1f),
+        color = etaSemanticPalette().divider,
     )
 }
