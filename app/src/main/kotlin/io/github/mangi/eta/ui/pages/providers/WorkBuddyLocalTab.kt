@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -34,6 +35,7 @@ import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
 import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
 import io.github.mangi.eta.data.workbuddy.WorkBuddyCoreDashboard
 import io.github.mangi.eta.data.workbuddy.WorkBuddyBytePathProbe
+import io.github.mangi.eta.data.workbuddy.workBuddyReadiness
 import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaTextButton
 import kotlinx.coroutines.CancellationException
@@ -65,8 +67,12 @@ internal fun WorkBuddyLocalTab(
     var confirmPaidProbe by remember { mutableStateOf(false) }
     var lastProbe by remember { mutableStateOf<WorkBuddyBytePathProbe.Outcome?>(null) }
     var modelChoices by remember { mutableStateOf<List<Model>>(emptyList()) }
+    var advancedOpen by rememberSaveable(provider.id) { mutableStateOf(false) }
 
     LaunchedEffect(provider.id) {
+        backendStatus = if (WorkBuddyEmbeddedCore.isRunning()) "已启动" else "未启动"
+        modelChoices = ProviderRepository.providerById(provider.id)?.models.orEmpty()
+        availableModels = modelChoices.size.takeIf { it > 0 }
         accounts = try {
             withContext(Dispatchers.IO) { WorkBuddyLocalVault.summaries() }
         } catch (_: Exception) {
@@ -103,10 +109,33 @@ internal fun WorkBuddyLocalTab(
         }
     }
 
+    val readiness = workBuddyReadiness(
+        coreBundled = WorkBuddyEmbeddedCore.isBundled(),
+        accountCount = accounts.size,
+        coreRunning = WorkBuddyEmbeddedCore.isRunning(),
+        accountHealthy = coreSummary?.healthy,
+        modelCount = availableModels,
+        actualStreamPassed = lastProbe?.completed == true &&
+            (lastProbe?.visibleCharacters ?: 0) > 0,
+    )
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = PaddingValues(start = contentSidePadding, end = contentSidePadding),
     ) {
+        item {
+            ProviderSection(title = "当前接入状态") {
+                EtaPreference(
+                    title = readiness.title,
+                    summary = "下一步：${readiness.nextAction}",
+                )
+                EtaPreference(
+                    title = "本机 ${accounts.size} 个账号 · ${availableModels ?: 0} 个已发现模型",
+                    summary = if (coreSummary == null) "尚未读取实时后端状态"
+                        else "账号池可用 ${coreSummary?.healthy} / ${coreSummary?.total}，仅表示后端记录",
+                )
+            }
+        }
         item {
             ProviderSection(title = "本地订阅 · 无需服务器") {
                 EtaPreference(
@@ -201,8 +230,15 @@ internal fun WorkBuddyLocalTab(
                         }
                     },
                 )
-                coreSummary?.let { value ->
-                    EtaPreference(
+                EtaTextButton(
+                    text = if (advancedOpen) "收起详细诊断与真实调用测试" else "展开详细诊断与真实调用测试",
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    onClick = { advancedOpen = !advancedOpen },
+                )
+                if (advancedOpen) {
+                    coreSummary?.let { value ->
+                        EtaPreference(
                         title = "账号池 ${value.healthy} / ${value.total} 可用",
                         summary = "国内 ${value.cnTotal} · 国际 ${value.globalTotal} · " +
                             "冷却 ${value.cooling} · 已禁用 ${value.disabled} · " +
@@ -244,6 +280,7 @@ internal fun WorkBuddyLocalTab(
                         summary = "HTTP ${value.responseCode} · SSE ${value.sseEvents} 个事件 · " +
                             "可见字符 ${value.visibleCharacters} 个（不记录具体聊天内容）",
                     )
+                }
                 }
                 EtaTextButton(
                     text = "停止本地核心并封存令牌",
@@ -307,7 +344,7 @@ internal fun WorkBuddyLocalTab(
             ProviderSection(title = "安全与限制") {
                 EtaPreference(
                     title = "凭据始终保留在手机本地",
-                    summary = "使用 Android Keystore AES-GCM 加密存储；模型调用只访问腾讯官方 HTTPS 域名。该模式不包含独立的 WorkBuddy 管理后台与管理员 Cookie。",
+                    summary = "静态账号库使用 Android Keystore AES-GCM；Go 核心运行时需要应用私有目录内的临时明文凭据。停止核心时回收续期信息并清理文件；异常退出会在下次启动前尝试恢复和清理。",
                 )
                 EtaPreference(
                     title = "与其他模式的关系",
