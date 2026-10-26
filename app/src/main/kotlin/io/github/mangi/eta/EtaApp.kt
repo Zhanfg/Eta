@@ -63,6 +63,16 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         }
         PredictiveBackController.apply(applicationInfo, predictiveBackEnabled)
         AgentMemoryRepository.init(this)
+        // Reconcile any Go-auth snapshots left by Android process death without
+        // blocking the UI thread. Failures leave private files intact for recovery.
+        applicationScope.launch {
+            runCatching { WorkBuddyEmbeddedCore.recoverAfterUnexpectedExit() }
+                .onFailure { error ->
+                    AndroidAgentLogger.warn(
+                        "WorkBuddy account recovery unavailable: type=${error.safeLogType()}"
+                    )
+                }
+        }
         ProviderRepository.init(this)
         McpServerRepository.init(this)
         XposedServiceHelper.registerListener(this)
