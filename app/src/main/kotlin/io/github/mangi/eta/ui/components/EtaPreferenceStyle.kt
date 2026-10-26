@@ -48,13 +48,13 @@ internal object EtaPreferenceColors {
 }
 
 internal object EtaPreferenceDefaults {
-    val SidePadding = 16.dp
-    val GroupSpacing = 16.dp
-    val IconSize = 24.dp
-    val IconTextGap = 16.dp
+    val SidePadding = EtaDesignTokens.SpacingMd
+    val GroupSpacing = EtaDesignTokens.SpacingMd
+    val IconSize = EtaDesignTokens.SpacingXl
+    val IconTextGap = EtaDesignTokens.SpacingMd
     val ContentStart = SidePadding + IconSize + IconTextGap
     fun contentStart(hasLeading: Boolean) = if (hasLeading) ContentStart else SidePadding
-    val RowMinHeight = 52.dp
+    val RowMinHeight = EtaDesignTokens.MinimumRowHeight
 }
 
 @Composable
