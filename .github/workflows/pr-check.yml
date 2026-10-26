@@ -1,6 +1,10 @@
 name: PR Check
 
 on:
+  # Feature branch validation can run without a WB native backend or PR merge.
+  push:
+    branches:
+      - feature/kelivo-appwide-design-system
   pull_request:
     branches:
       - main
