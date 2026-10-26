@@ -35,6 +35,18 @@ internal object WorkBuddyEmbeddedCore {
 
     fun init(ctx: Context) { context = ctx.applicationContext }
 
+    /**
+     * Cold-start hygiene, invoked on a background dispatcher after EtaApp
+     * initializes Keystore. If Android killed the previous run, recover
+     * refreshed tokens and securely leave no stale runtime auth JSON behind.
+     * A normal running core is never interrupted by this path.
+     */
+    fun recoverAfterUnexpectedExit(): Boolean = synchronized(lock) {
+        if (running?.isAlive == true) return false
+        context?.let { recoverPrivateSnapshots(it) }
+        true
+    }
+
     fun isBundled(): Boolean {
         val ctx = context ?: return false
         return File(ctx.applicationInfo.nativeLibraryDir, "libwbcore.so").isFile
@@ -181,6 +193,9 @@ internal object WorkBuddyEmbeddedCore {
                 .redirectErrorStream(true)
                 .start()
         } catch (error: Exception) {
+            // Failed exec must not leave cleartext credentials indefinitely.
+            // Recovery failure is surfaced rather than deleting recoverable data.
+            recoverPrivateSnapshots(ctx)
             throw IllegalStateException("Android 无法启动 WB Go 核心：${error.javaClass.simpleName}")
         }
         running = process
