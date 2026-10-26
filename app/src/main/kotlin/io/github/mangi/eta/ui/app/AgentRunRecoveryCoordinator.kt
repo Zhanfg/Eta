@@ -31,6 +31,11 @@ internal object AgentRunRecoveryCoordinator {
             .asSequence()
             .filter { it.handoff.source == AgentRuntimeWire.AGENT_UI_HANDOFF_SOURCE }
             .filterNot { it.stableRunId in locallyObservedRunIds }
+            // A durable outbox may contain multiple envelopes for the same run
+            // after an interrupted write/retry. Reconcile by run identity and
+            // keep the latest terminal result, never replay a task twice.
+            .sortedByDescending { it.createdAt }
+            .distinctBy { it.stableRunId }
             .sortedBy { it.createdAt }
             .map { run -> Completed(run, uiCheckpoints[run.stableRunId]) }
             .toList()
