@@ -28,6 +28,8 @@ internal object EtaDesignTokens {
     val MinimumTapTarget = 48.dp
     val PreferenceRowHeight = 56.dp
     val FeatureCardHeight = 136.dp
+    val TabletBreakpoint = 600.dp
+    val WideContentMaxWidth = 800.dp
 
     const val MotionFastMillis = 140
     const val MotionNormalMillis = 230
