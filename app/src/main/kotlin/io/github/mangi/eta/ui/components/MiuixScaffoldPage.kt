@@ -144,7 +144,7 @@ fun MiuixScaffold(
 fun MiuixPageBottomSpacer(modifier: Modifier = Modifier) {
     Spacer(
         modifier = modifier
-            .height(24.dp)
+            .height(EtaDesignTokens.SpaceXl)
             .navigationBarsPadding(),
     )
 }

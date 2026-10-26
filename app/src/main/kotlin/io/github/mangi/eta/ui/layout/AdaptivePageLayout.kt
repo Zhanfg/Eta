@@ -16,9 +16,10 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.app.LocalPlatformDensity
+import io.github.mangi.eta.ui.components.EtaDesignTokens
 
-private val WideScreenMinWidth = 600.dp
-private val MaxPageContentWidth = 800.dp
+private val WideScreenMinWidth = EtaDesignTokens.TabletBreakpoint
+private val MaxPageContentWidth = EtaDesignTokens.WideContentMaxWidth
 
 @Composable
 fun rememberIsWideScreen(): Boolean {

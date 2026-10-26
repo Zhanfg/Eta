@@ -103,6 +103,32 @@ class AgentRunRecoveryCoordinatorTest {
         assertEquals(listOf("orphan"), plan.interrupted.map { it.runId })
     }
 
+    @Test
+    fun duplicateDurableTerminalEnvelopesReplayOnlyLatestOnceAfterRestart() {
+        val early = completed("run-duplicated")
+        val late = AgentRuntimeWire.CompletedRun(
+            handoff = early.handoff,
+            result = AgentRuntimeWire.RunResult(
+                runId = "run-duplicated",
+                ok = true,
+                content = "更完整的最终结果",
+            ),
+            createdAt = early.createdAt + 10,
+        )
+        val plan = AgentRunRecoveryCoordinator.plan(
+            checkpoints = listOf(checkpoint("run-duplicated")),
+            completedRuns = listOf(late, early, late),
+            activeStateKnown = true,
+            terminalStateKnown = true,
+            activeRunIds = emptySet(),
+            locallyObservedRunIds = emptySet(),
+        )
+        assertEquals(1, plan.completed.size)
+        assertEquals("更完整的最终结果", plan.completed.single().result.result.content)
+        assertTrue(plan.interrupted.isEmpty())
+        assertTrue(plan.reattach.isEmpty())
+    }
+
     private fun checkpoint(
         runId: String,
         owner: String = "old-process",

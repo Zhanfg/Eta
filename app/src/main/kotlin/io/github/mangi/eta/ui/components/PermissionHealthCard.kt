@@ -57,7 +57,7 @@ fun PermissionHealthCard(
                     color = if (issueCount == 0) {
                         MiuixTheme.colorScheme.onSurfaceVariantActions
                     } else {
-                        MiuixTheme.colorScheme.primary
+                        etaSemanticPalette().warning
                     },
                 )
             }
@@ -91,9 +91,9 @@ fun PermissionHealthCard(
 @Composable
 private fun PermissionStatusIcon(status: PermissionStatusUi) {
     val tint = when (status) {
-        PermissionStatusUi.Available -> MiuixTheme.colorScheme.primary
-        PermissionStatusUi.Warning -> MiuixTheme.colorScheme.primary
-        PermissionStatusUi.Missing,
+        PermissionStatusUi.Available -> etaSemanticPalette().success
+        PermissionStatusUi.Warning -> etaSemanticPalette().warning
+        PermissionStatusUi.Missing -> MiuixTheme.colorScheme.error
         PermissionStatusUi.Disabled -> MiuixTheme.colorScheme.onSurfaceVariantActions
     }
     when (status) {

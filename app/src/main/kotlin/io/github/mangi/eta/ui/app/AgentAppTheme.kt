@@ -40,19 +40,18 @@ fun AgentAppTheme(
         appearance.themeMode == AppearanceThemeMode.DARK -> ColorSchemeMode.MonetDark
         else -> ColorSchemeMode.MonetSystem
     }
-    val systemSeedColor = if (
+    // Do not feed an already harmonized platform color back into Monet as
+    // a new seed. That produces unstable wallpaper-based tones on ColorOS.
+    // Observe palette revisions only to recreate the controller when needed.
+    val wallpaperRevision = if (
         appearance.monetEnabled && appearance.accentColor == AppearanceAccentColor.SYSTEM
-    ) {
-        platformDynamicColors(isDark).primary
-    } else {
-        null
-    }
+    ) platformDynamicColors(isDark).primary else null
     val keyColor = when {
         !appearance.monetEnabled -> null
-        appearance.accentColor == AppearanceAccentColor.SYSTEM -> systemSeedColor
+        appearance.accentColor == AppearanceAccentColor.SYSTEM -> null
         else -> appearance.accentColor.seedColor()
     }
-    val controller = remember(appearance, colorSchemeMode, keyColor, isDark) {
+    val controller = remember(appearance, colorSchemeMode, keyColor, isDark, wallpaperRevision) {
         ThemeController(
             colorSchemeMode = colorSchemeMode,
             keyColor = keyColor,
@@ -63,14 +62,13 @@ fun AgentAppTheme(
     }
     val colors = controller.currentColors()
     val themedColors = remember(colors, isDark, appearance.monetEnabled, appearance.pureBlackEnabled) {
-        if (appearance.monetEnabled && appearance.pureBlackEnabled && isDark) {
+        val palette = if (appearance.monetEnabled && appearance.pureBlackEnabled && isDark) {
             colors.copy(
                 background = Color.Black,
                 surface = Color.Black,
             )
-        } else {
-            colors
-        }
+        } else colors
+        palette.etaAccessibleText()
     }
 
     LaunchedEffect(isDark) { onResolvedDarkModeChange(isDark) }

@@ -105,7 +105,7 @@ private val SendButtonVisualSize = ChatInputActionIconSize
 private val SendIconSize = 16.dp
 private val StopIconSize = 10.dp
 private val ThinkingIconSize = 21.dp
-private val InputContainerShape = RoundedCornerShape(20.dp)
+private val InputContainerShape = RoundedCornerShape(EtaDesignTokens.ChatComposerRadius)
 
 /**
  * Agent 输入器始终保持同一空间结构，聚焦、输入和执行过程只改变状态，不搬动操作入口。
@@ -196,7 +196,7 @@ internal fun AgentChatInputBar(
         if (recognitionEnabled) SpeechInputFeedback(dictation)
         AnimatedVisibility(
             visible = queuedMessages.isNotEmpty(),
-            enter = fadeIn(tween(160)),
+            enter = fadeIn(tween(EtaDesignTokens.MotionFastMillis)),
             exit = fadeOut(tween(100)) + shrinkVertically(tween(150)),
         ) {
             AgentChatQueueStrip(
@@ -210,8 +210,8 @@ internal fun AgentChatInputBar(
         }
         AnimatedVisibility(
             visible = pendingFileReferences.isNotEmpty(),
-            enter = fadeIn(tween(160)),
-            exit = fadeOut(tween(100)) + shrinkVertically(tween(160)),
+            enter = fadeIn(tween(EtaDesignTokens.MotionFastMillis)),
+            exit = fadeOut(tween(100)) + shrinkVertically(tween(EtaDesignTokens.MotionFastMillis)),
         ) {
             PendingFileReferenceStrip(
                 references = pendingFileReferences,
@@ -222,8 +222,8 @@ internal fun AgentChatInputBar(
 
         AnimatedVisibility(
             visible = pendingImages.isNotEmpty(),
-            enter = fadeIn(tween(160)),
-            exit = fadeOut(tween(100)) + shrinkVertically(tween(160)),
+            enter = fadeIn(tween(EtaDesignTokens.MotionFastMillis)),
+            exit = fadeOut(tween(100)) + shrinkVertically(tween(EtaDesignTokens.MotionFastMillis)),
         ) {
             PendingImageStrip(
                 images = pendingImages,
@@ -234,7 +234,7 @@ internal fun AgentChatInputBar(
 
         AnimatedVisibility(
             visible = isEditingMessage,
-            enter = fadeIn(tween(160)),
+            enter = fadeIn(tween(EtaDesignTokens.MotionFastMillis)),
             exit = fadeOut(tween(100)) + shrinkVertically(tween(140)),
         ) {
             Text(
@@ -398,7 +398,7 @@ internal fun AgentChatInputBar(
 
                         AnimatedVisibility(
                             visible = showStreamingSend,
-                            enter = fadeIn(tween(140)) + scaleIn(tween(160), initialScale = 0.78f) + expandHorizontally(tween(160)),
+                            enter = fadeIn(tween(140)) + scaleIn(tween(EtaDesignTokens.MotionFastMillis), initialScale = 0.78f) + expandHorizontally(tween(EtaDesignTokens.MotionFastMillis)),
                             exit = fadeOut(tween(100)) + scaleOut(tween(120), targetScale = 0.78f) + shrinkHorizontally(tween(140)),
                         ) {
                             IconButton(
@@ -430,7 +430,7 @@ internal fun AgentChatInputBar(
                                 canSend -> MiuixTheme.colorScheme.primary
                                 else -> MiuixTheme.colorScheme.surfaceContainerHigh
                             },
-                            animationSpec = tween(durationMillis = 160),
+                            animationSpec = tween(durationMillis = EtaDesignTokens.MotionFastMillis),
                             label = "send_button_color",
                         )
                         Box(
@@ -468,7 +468,7 @@ internal fun AgentChatInputBar(
                                 AnimatedContent(
                                     targetState = showPrimaryStop,
                                     transitionSpec = {
-                                        (fadeIn(tween(130)) + scaleIn(tween(160), initialScale = 0.72f))
+                                        (fadeIn(tween(130)) + scaleIn(tween(EtaDesignTokens.MotionFastMillis), initialScale = 0.72f))
                                             .togetherWith(
                                                 fadeOut(tween(90)) +
                                                     scaleOut(tween(110), targetScale = 0.72f)
@@ -532,7 +532,7 @@ private fun ThinkingEffortChip(
         } else {
             MiuixTheme.colorScheme.onSurfaceVariantSummary
         },
-        animationSpec = tween(durationMillis = 160),
+        animationSpec = tween(durationMillis = EtaDesignTokens.MotionFastMillis),
         label = "thinking_content",
     )
     Box(modifier = modifier) {
