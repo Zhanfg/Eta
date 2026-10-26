@@ -20,7 +20,7 @@
 | 页间一致的视觉层次 | `EtaCard`、`EtaFeatureCard`、`EtaPreferenceStyle`、`MiuixScaffoldPage` | 已接入 |
 | 聊天稳定位置与响应布局 | `AgentChatInputBar`、`AgentAppShell` | 令牌应用；复杂动效和桌面布局验收待续 |
 | Agent 阶段与工具状态可观察 | `AgentStatusCard`、`AgentToolActivity`、`PermissionHealthCard` | 改为语义色与可点按尺寸 |
-| 可恢复的运行状态与 durable journal | `AgentRunCheckpointStore`、`AgentRunRecoveryCoordinator`、`AgentPendingResultRecovery` | ETA 现有能力；需要专项故障注入验收 |
+| 可恢复的运行状态与 durable journal | `AgentRunCheckpointStore`、`AgentRunRecoveryCoordinator`、`AgentPendingResultRecovery` | 已补齐重复终态 Outbox 的最新结果单次恢复及 JVM 回归测试；设备故障注入仍待验收 |
 | 模型 Provider 隔离/路由 | `AgentModelClient` / `ProviderClientFactory` | 已有能力；协议/流式兼容矩阵需后续扩展 |
 | 文件与环境隔离 | ETA 内部 Terminal/Workspace/Root 运行环境 | 专项安全与可恢复性审计待续 |
 | 备份/迁移/设置生命周期 | ETA Backup + DataStore / Appearance Settings | 跨版本迁移测试待续 |
