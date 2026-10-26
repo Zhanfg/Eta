@@ -24,6 +24,7 @@ internal object EtaDesignTokens {
     val SmallControlRadius = 12.dp
 
     val IconSize = 24.dp
+    val CompactTopBarIconSize = 20.dp
     val StatusIndicatorSize = 12.dp
     val MinimumTapTarget = 48.dp
     val PreferenceRowHeight = 56.dp
