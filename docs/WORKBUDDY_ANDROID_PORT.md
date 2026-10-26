@@ -79,3 +79,17 @@ G6. Streaming Chat and tool_calls from authorized subscription, response time, c
 G7. Native dashboard feature-parity, accessibility/dynamic color, offline/boot/failure recovery, credential hygiene (plaintext file security). **NOT YET VERIFIED**.
 
 CI pass alone is **not** G4/G5/G6. No official-release APK should be published until critical gates pass. Keep the existing `main` as the upstream ETA reference.
+
+
+## 2026-10-26 Kelivo engineering lessons applied
+
+This iteration uses **engineering practices from** the user's earlier Kelivo agent and UI work, not Kelivo's AGPL-3.0 source code/assets. Both remain independent products.
+
+1. **Runtime is disposable, environment is durable**: the Go subprocess can die at any time; the Android Keystore vault is a separate persistent environment. On restart, unfinished Go token checkpoints are recovered before accounts are rematerialized. Restored files cannot roll back a more recent manual desktop import, even when expiry values match.
+2. **Atomic encrypted checkpoints**: the AES-GCM vault uses Android `AtomicFile` with an fsync-backed commit / rollback, rather than writing a temporary file then renaming it without confirmed durable data.
+3. **Evidence-driven UI**: one readiness state models binary installed → local accounts present → Go process alive → account pool responsive → models visible → real SSE completed. Passing lint/build does not mark the user as ready.
+4. **Progressive disclosure**: the default WorkBuddy screen emphasizes import and actionable next steps. Low-level pool counters and potentially credit-consuming probes sit behind the diagnostics expander.
+5. **Redacted failure taxonomy**: `WB-CORE-01/02/03`, `WB-IMPORT-01`, `WB-VAULT-01`, `WB-AUTH-01`, `WB-MODEL-01`, `WB-STREAM-01`, `WB-NET-01/02`, `WB-UNKNOWN`. The UI no longer prints upstream exception messages that could contain bearer tokens, query strings or account IDs.
+6. **Regression evidence**: JUnit tests lock down stale-file precedence and error-message confidentiality; Go-byte and Android-APK tests remain independent gates.
+
+**Outstanding blockers remain:** physical Android SELinux/ProcessBuilder execution smoke on a real OnePlus, authorized account-based chat/tool-call verification, manager frontend feature parity, and removing plaintext Go token snapshots during live runtime. A later CI success is still not proof of those gates.
