@@ -46,15 +46,24 @@ internal data class EtaSemanticTone(
 @Composable
 internal fun etaSemanticTone(): EtaSemanticTone {
     val colors = MiuixTheme.colorScheme
-    val dark = colors.surface.luminance() < 0.48f
+    return semanticToneForSurface(
+        surface = colors.surface,
+        error = colors.error,
+        secondary = colors.onSurfaceVariantSummary,
+    )
+}
+
+/** Pure contrast policy suitable for JVM regression tests and future themes. */
+internal fun semanticToneForSurface(surface: Color, error: Color, secondary: Color): EtaSemanticTone {
+    val dark = surface.luminance() < 0.48f
     return EtaSemanticTone(
         success = readableForeground(
-            if (dark) Color(0xFF76D5A0) else Color(0xFF147443), colors.surface, 4.5
+            if (dark) Color(0xFF76D5A0) else Color(0xFF147443), surface, 4.5
         ),
         warning = readableForeground(
-            if (dark) Color(0xFFFFCD70) else Color(0xFF885400), colors.surface, 4.5
+            if (dark) Color(0xFFFFCD70) else Color(0xFF885400), surface, 4.5
         ),
-        danger = readableForeground(colors.error, colors.surface, 4.5),
-        quiet = readableForeground(colors.onSurfaceVariantSummary, colors.surface, 4.5),
+        danger = readableForeground(error, surface, 4.5),
+        quiet = readableForeground(secondary, surface, 4.5),
     )
 }
