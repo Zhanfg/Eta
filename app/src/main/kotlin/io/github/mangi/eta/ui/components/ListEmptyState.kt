@@ -34,25 +34,25 @@ internal fun ListEmptyState(
 ) {
     val colors = MiuixTheme.colorScheme
     Column(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 40.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = EtaDesignTokens.SpaceXl, vertical = 40.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         icon?.let {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .squircleBackground(colors.surfaceContainerHigh, 16.dp),
+                    .size(EtaDesignTokens.MinimumTapTarget)
+                    .squircleBackground(etaSemanticPalette().raisedFill, EtaDesignTokens.EmptyStateIconRadius),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = it,
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(EtaDesignTokens.IconSize),
                     tint = colors.onSurfaceVariantSummary,
                 )
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(EtaDesignTokens.SpaceXs))
         }
         Text(
             text = title,
@@ -70,7 +70,7 @@ internal fun ListEmptyState(
             )
         }
         action?.let {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(EtaDesignTokens.SpaceSm))
             it()
         }
     }
