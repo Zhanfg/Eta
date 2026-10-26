@@ -59,14 +59,10 @@ internal object EtaPreferenceDefaults {
 
 @Composable
 internal fun EtaPreferenceTheme(content: @Composable () -> Unit) {
-    val colors = MiuixTheme.colorScheme
-    val appearance = LocalAppearanceSettings.current
-    val pageColors = if (!appearance.monetEnabled && colors.background.luminance() > 0.5f) {
-        colors.copy(background = Color(0xFFF0F1F2), primary = EtaPreferenceColors.Blue)
-    } else {
-        colors
-    }
-    MiuixTheme(colors = pageColors.readableTextRoles(), content = content)
+    // Do not override the wallpaper palette or user-chosen accent when entering
+    // Settings/Providers. Every page consumes the exact same app-root palette.
+    // The root already applies the surface ladder and final text contrast.
+    content()
 }
 
 @Composable
