@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import io.github.mangi.eta.R
+import io.github.mangi.eta.ui.app.etaSemanticPalette
 import io.github.mangi.eta.ui.model.PermissionStatusUi
 import io.github.mangi.eta.ui.model.RunStatusUi
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -18,11 +19,14 @@ val StatusIdle: Color @Composable get() = MiuixTheme.colorScheme.onSurfaceVarian
 // ── RunStatusUi 映射 ──────────────────────────────────────────────────
 
 @Composable
-fun RunStatusUi.color(): Color = when (this) {
-    RunStatusUi.Running -> StatusRunning
-    RunStatusUi.Success -> StatusSuccess
-    RunStatusUi.Failed -> StatusError
-    RunStatusUi.Cancelled -> StatusIdle
+fun RunStatusUi.color(): Color {
+    val palette = MiuixTheme.colorScheme.etaSemanticPalette()
+    return when (this) {
+        RunStatusUi.Running -> palette.running
+        RunStatusUi.Success -> palette.success
+        RunStatusUi.Failed -> palette.error
+        RunStatusUi.Cancelled -> palette.idle
+    }
 }
 
 @Composable
@@ -36,11 +40,14 @@ fun RunStatusUi.label(): String = stringResource(when (this) {
 // ── PermissionStatusUi 映射 ───────────────────────────────────────────
 
 @Composable
-fun PermissionStatusUi.color(): Color = when (this) {
-    PermissionStatusUi.Available -> StatusIdle
-    PermissionStatusUi.Warning -> StatusWarning
-    PermissionStatusUi.Missing -> StatusError
-    PermissionStatusUi.Disabled -> StatusIdle
+fun PermissionStatusUi.color(): Color {
+    val palette = MiuixTheme.colorScheme.etaSemanticPalette()
+    return when (this) {
+        PermissionStatusUi.Available -> palette.success
+        PermissionStatusUi.Warning -> palette.warning
+        PermissionStatusUi.Missing -> palette.error
+        PermissionStatusUi.Disabled -> palette.idle
+    }
 }
 
 @Composable
