@@ -139,6 +139,13 @@ internal object WorkBuddyLocalVault {
      * Import refreshed access tokens from the Go core after graceful shutdown.
      * Files are never exposed via Android's exported providers.
      */
+    /**
+     * Reject credentials older than a previously imported desktop export.
+     * Android crash recovery may encounter stale Go snapshots.
+     */
+    internal fun canRecoverToken(oldExpiry: Long, candidateExpiry: Long): Boolean =
+        oldExpiry <= 0L || candidateExpiry >= oldExpiry
+
     fun ingestCoreRefreshes(directory: File): Int = synchronized(lock) {
         val known = read()
         if (known.isEmpty() || !directory.isDirectory) return@synchronized 0
@@ -156,10 +163,12 @@ internal object WorkBuddyLocalVault {
                     val access = auth.optString("accessToken")
                     if (access.isBlank()) return@forEach
                     val previous = known[index]
+                    val candidateExpiry = auth.optLong("expiresAt")
+                    if (!canRecoverToken(previous.expiresAt, candidateExpiry)) return@forEach
                     val refreshed = previous.copy(
                         accessToken = access,
                         refreshToken = auth.optString("refreshToken").ifBlank { previous.refreshToken },
-                        expiresAt = auth.optLong("expiresAt").takeIf { it > 0 } ?: previous.expiresAt,
+                        expiresAt = candidateExpiry.takeIf { it > 0 } ?: previous.expiresAt,
                         domain = auth.optString("domain").ifBlank { previous.domain },
                     )
                     if (refreshed != previous) {
