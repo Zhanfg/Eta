@@ -48,13 +48,13 @@ internal object EtaPreferenceColors {
 }
 
 internal object EtaPreferenceDefaults {
-    val SidePadding = 16.dp
-    val GroupSpacing = 16.dp
-    val IconSize = 24.dp
-    val IconTextGap = 16.dp
+    val SidePadding = EtaDesignTokens.SpacingMd
+    val GroupSpacing = EtaDesignTokens.SpacingMd
+    val IconSize = EtaDesignTokens.SpacingXl
+    val IconTextGap = EtaDesignTokens.SpacingMd
     val ContentStart = SidePadding + IconSize + IconTextGap
     fun contentStart(hasLeading: Boolean) = if (hasLeading) ContentStart else SidePadding
-    val RowMinHeight = 52.dp
+    val RowMinHeight = EtaDesignTokens.MinimumRowHeight
 }
 
 @Composable
@@ -62,7 +62,7 @@ internal fun EtaPreferenceTheme(content: @Composable () -> Unit) {
     val colors = MiuixTheme.colorScheme
     val appearance = LocalAppearanceSettings.current
     val pageColors = if (!appearance.monetEnabled && colors.background.luminance() > 0.5f) {
-        colors.copy(background = Color(0xFFF0F1F2), primary = EtaPreferenceColors.Blue)
+        colors.copy(background = Color(0xFFF0F1F2))
     } else {
         colors
     }

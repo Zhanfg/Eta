@@ -1,0 +1,51 @@
+name: ETA App-wide Design / Agent Regression
+
+on:
+  push:
+    branches:
+      - feature/eta-appwide-kelivo-practices
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eta-appwide-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kotlin-ui-and-agent:
+    name: Lint / Unit Tests / Debug Kotlin Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout complete ETA branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Configure standard ETA Android toolchain
+        uses: ./.github/actions/setup-build
+
+      - name: Verify whole-app UI and agent integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache --continue \
+            :app:lintDebug \
+            :app:testDebugUnitTest \
+            :app:assembleDebug
+
+      - name: Upload diagnostic reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eta-appwide-regression-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+# This validates the app-wide Kotlin baseline, NOT a deployable WorkBuddy APK.
+# The separate Go ARM64 integration workflow is mandatory for local WB.

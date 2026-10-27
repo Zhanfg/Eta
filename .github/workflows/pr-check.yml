@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - feature/workbuddy-native-integration
   workflow_dispatch:
 
 permissions:
