@@ -87,19 +87,35 @@ internal object AgentModelImageEncoder {
         // Bitmap 尚无文件编码，仅序列化一次 PNG；不缩放、不铺底、不转换像素。
         encodeBitmap(bitmap, source, screenProfile, flattenAlpha = false).copy(preserveOriginal = true)
 
-    /** 文件工具图片在发送模型前统一编码为 JPEG。 */
+    /** 文件工具中保留 PNG 文字像素，其余格式按兼容路径编码为 JPEG。 */
     fun toolVision(
         bytes: ByteArray,
         source: String,
         mimeHint: String = "image/jpeg",
     ): AgentModelClient.ModelImage? = runCatching {
         if (!bytes.hasSupportedImageMagic()) return@runCatching null
-        transcodeBytes(
-            bytes = bytes,
-            source = source,
-            bounds = inspectBounds(bytes, mimeHint),
-            profile = toolVisionProfile,
-        )
+        val bounds = inspectBounds(bytes, mimeHint)
+        if (bounds.width <= 0 || bounds.height <= 0) return@runCatching null
+        if (bounds.mimeType.equals("image/png", ignoreCase = true)) {
+            // Screenshots, scanned pages, diagrams and tiny glyphs lose legibility
+            // when converted to JPEG. Preserve verified PNG bytes and dimensions.
+            AgentModelClient.ModelImage(
+                reference = "data:image/png;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}",
+                mimeType = "image/png",
+                bytes = bytes.size,
+                width = bounds.width,
+                height = bounds.height,
+                source = source,
+                preserveOriginal = true,
+            )
+        } else {
+            transcodeBytes(
+                bytes = bytes,
+                source = source,
+                bounds = bounds,
+                profile = toolVisionProfile,
+            )
+        }
     }.getOrNull()
 
     fun preview(
