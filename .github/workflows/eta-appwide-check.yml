@@ -31,6 +31,17 @@ jobs:
         shell: bash
         run: bash scripts/verify_eta_system_only_scopes.sh
 
+      - name: Validate KSU-Magisk module preview scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in modules/eta-workspace/*.sh modules/eta-workspace/bin/*.sh; do
+            sh -n "$script"
+          done
+          grep -qx 'id=eta_workspace' modules/eta-workspace/module.prop
+          test ! -e modules/eta-workspace/sepolicy.rule
+          test ! -d modules/eta-workspace/system
+
       - name: Configure standard ETA Android toolchain
         uses: ./.github/actions/setup-build
 
