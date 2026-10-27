@@ -1,6 +1,6 @@
 # ETA Background Workspace / 物理屏与 Agent 工作空间隔离
 
-Status: **RFC / feasibility only**. This document does not mean a virtual display, cross-app GUI or real-device isolation is implemented.
+Status: **B1 partial implementation**. Strict background mode is now exposed in Settings and checked before ETA's built-in tool dispatch. A non-invasive Android virtual-display capability check is available in Settings. This is not yet working third-party app isolation; physical-device testing remains necessary.
 
 ## Objective
 
