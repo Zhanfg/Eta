@@ -27,9 +27,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify system-only LSPosed scope
+      - name: Verify original ETA LSPosed scope remains unchanged
         shell: bash
-        run: bash scripts/verify_eta_system_only_scopes.sh
+        run: bash scripts/verify_eta_original_lsposed_scopes.sh
 
       - name: Validate KSU-Magisk module preview scripts
         shell: bash
