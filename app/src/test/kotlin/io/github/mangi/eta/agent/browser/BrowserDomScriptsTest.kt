@@ -30,7 +30,9 @@ class BrowserDomScriptsTest {
         assertTrue(script.contains("TARGET_DISABLED"))
         assertTrue(script.contains("TARGET_OCCLUDED"))
         assertTrue(script.contains("document.elementFromPoint(cx, cy)"))
-        assertTrue(script.contains("requireHitTarget(target)"))
+        assertTrue(script.contains("nearestActionable(target)"))
+        assertTrue(script.contains("requireHitTarget(actionTarget)"))
+        assertTrue(script.contains("pointerEvents === 'none'"))
         assertTrue(script.contains("event_dispatched: true, action_verified: false"))
     }
 
