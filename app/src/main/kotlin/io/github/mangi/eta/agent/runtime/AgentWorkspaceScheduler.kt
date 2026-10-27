@@ -57,7 +57,7 @@ internal class AgentWorkspaceScheduler(
         lost.forEach { active.remove(it.taskId) }
         // Keep the tasks as pending; the dispatcher must re-observe/relaunch
         // after a new authenticated display is allocated.
-        lost.forEach { queue.addLast(QueueItem(it.taskId, it.packageName)) }
+        lost.forEach { enqueue(it.taskId, it.packageName) }
         lost
     }
 
@@ -86,6 +86,10 @@ internal class AgentWorkspaceScheduler(
         if (queue.any { it.taskId == taskId && it.packageName != packageName }) {
             return Admission.Deferred(taskId, Reason.INVALID_REQUEST)
         }
+        val queued = queue.any { it.taskId == taskId }
+        if (!queued && active.size + queue.size >= maxApplications) {
+            return Admission.Deferred(taskId, Reason.CAPACITY_REACHED)
+        }
         if (packageName == foregroundPackage) {
             enqueue(taskId, packageName)
             return Admission.Deferred(taskId, Reason.CONFLICT_WITH_USER)
@@ -98,12 +102,12 @@ internal class AgentWorkspaceScheduler(
             enqueue(taskId, packageName)
             return Admission.Deferred(taskId, Reason.NO_VALIDATED_DISPLAY)
         }
-        val queued = queue.any { it.taskId == taskId }
-        if (!queued && active.size + queue.size >= maxApplications) {
-            return Admission.Deferred(taskId, Reason.CAPACITY_REACHED)
-        }
         val freeDisplay = displays.firstOrNull { display -> active.values.none { it.displayId == display } }
-        if (freeDisplay == null || (queue.isNotEmpty() && queue.first().taskId != taskId)) {
+        val earliestRunnable = queue.firstOrNull { item ->
+            item.packageName != foregroundPackage &&
+                active.values.none { it.packageName == item.packageName }
+        }
+        if (freeDisplay == null || (earliestRunnable != null && earliestRunnable.taskId != taskId)) {
             enqueue(taskId, packageName)
             return Admission.Deferred(taskId, Reason.WAITING_FOR_DISPLAY)
         }
