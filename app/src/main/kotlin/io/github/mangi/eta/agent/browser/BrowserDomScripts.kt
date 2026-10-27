@@ -79,9 +79,15 @@ internal object BrowserDomScripts {
             }
             return !element.matches(':disabled');
           }
+          function nearestActionable(element) {
+            return element.closest('button,a,input,summary,[role="button"],[role="link"],[onclick]') || element;
+          }
           function requireHitTarget(target) {
             if (!visible(target)) throw new Error('TARGET_NOT_VISIBLE');
             if (!enabled(target)) throw new Error('TARGET_DISABLED');
+            if (window.getComputedStyle(target).pointerEvents === 'none') {
+              throw new Error('TARGET_OCCLUDED');
+            }
             target.scrollIntoView({ block: 'center', inline: 'center' });
             var rect = target.getBoundingClientRect();
             var cx = rect.left + rect.width / 2;
@@ -500,14 +506,15 @@ internal object BrowserDomScripts {
     fun click(selector: String?, x: Int?, y: Int?): String =
         targeted(selector, x, y) +
             """
-            var center = requireHitTarget(target);
-            var matched = describe(target);
+            var actionTarget = nearestActionable(target);
+            var center = requireHitTarget(actionTarget);
+            var matched = describe(actionTarget);
             ['mousemove','mouseover','mousedown','mouseup'].forEach(function(kind) {
-              target.dispatchEvent(new MouseEvent(kind, {
+              actionTarget.dispatchEvent(new MouseEvent(kind, {
                 bubbles: true, cancelable: true, clientX: center.x, clientY: center.y
               }));
             });
-            target.click();
+            actionTarget.click();
             // Synthetic DOM click can be ignored by pages requiring trusted user input.
             // We only attest dispatch, never claim the page side-effect was verified.
             return { matched_element: matched, event_dispatched: true, action_verified: false };
