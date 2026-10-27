@@ -5,6 +5,7 @@ on:
     branches:
       - feature/eta-appwide-kelivo-practices
       - feature/eta-automation-vision-hardening
+      - feature/eta-background-workspace
   workflow_dispatch:
 
 permissions:
