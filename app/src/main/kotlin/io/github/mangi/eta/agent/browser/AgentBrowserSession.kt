@@ -664,9 +664,13 @@ internal class AgentBrowserSession(
             Thread.sleep(100L)
         }
         if (snapshots.value.isLoading) {
-            navigationGeneration.incrementAndGet()
-            mainHandler.post { runCatching { webView?.stopLoading() } }
-            throw BrowserFailure("ACTION_TIMEOUT", "网页操作后的页面加载超时", "timeout")
+            // Click / submit may already have taken effect. Do not stop the page or
+            // report a safe-to-retry failure: that can duplicate a purchase or form.
+            throw BrowserFailure(
+                "ACTION_OUTCOME_UNKNOWN",
+                "网页操作已发出，但页面仍在加载；请先检查页面状态或截图，不要直接重复点击",
+                "unknown",
+            )
         }
     }
 
