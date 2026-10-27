@@ -43,9 +43,10 @@ internal object BackgroundDisplayCapabilityProbe {
         var reader: ImageReader? = null
         var workspace: VirtualDisplay? = null
         return try {
-            reader = ImageReader.newInstance(
+            val imageReader = ImageReader.newInstance(
                 720, 1280, PixelFormat.RGBA_8888, 2
             )
+            reader = imageReader
             val density = context.resources.displayMetrics.densityDpi.coerceIn(160, 560)
             // A normal app must not pretend it owns a system display. The
             // secure/mirroring/public flags need privileges we do not request.
@@ -54,7 +55,7 @@ internal object BackgroundDisplayCapabilityProbe {
                 720,
                 1280,
                 density,
-                reader.surface,
+                imageReader.surface,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY,
             )
             val id = workspace?.display?.displayId
