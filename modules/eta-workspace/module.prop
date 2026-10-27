@@ -1,0 +1,6 @@
+id=eta_workspace
+name=ETA Workspace Companion (Capability Preview)
+version=0.1.0-alpha01
+versionCode=10001
+author=ETA contributors
+description=KSU/Magisk module for safe Android virtual workspace capability diagnostics; display service not yet shipped
