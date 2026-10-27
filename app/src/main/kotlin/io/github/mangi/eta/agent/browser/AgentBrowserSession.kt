@@ -469,9 +469,17 @@ internal class AgentBrowserSession(
             }
         )
         val action = if (readable) "get_readable" else "get_text"
+        // Text-only extraction is not OCR. If a page mainly consists of
+        // images/canvas, attach its viewport for the active vision-capable model
+        // instead of silently answering from an empty DOM text result.
+        val visualImage = if (value.optBoolean("visual_inspection_recommended", false)) {
+            runCatching { captureViewport(view) }.getOrNull()
+        } else null
         return toolResult(
             mergeValue(baseEnvelope(action, true, "ok"), value)
                 .put("content_format", if (readable) "markdown" else "text")
+                .put("visual_image_attached", visualImage != null),
+            listOfNotNull(visualImage),
         )
     }
 
