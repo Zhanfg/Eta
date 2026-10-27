@@ -375,6 +375,17 @@ private fun SettingsPageContent(
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,
+                        title = "严格后台模式（不操作当前手机屏幕）",
+                        summary = "允许独立网页、文件和模型任务；点击、启动应用及其他前台操作将明确阻止。第三方 App 虚拟屏仍需通过兼容性验证。",
+                        key = Prefs.Keys.AGENT_BACKGROUND_ONLY,
+                        icon = Icons.Rounded.Smartphone,
+                        iconTint = EtaPreferenceColors.Blue,
+                    )
+
+                    EtaPreferenceDivider()
+                    SwitchPref(
+                        context = context,
+                        prefs = agentPrefs,
                         title = stringResource(R.string.ui_enable_device_direct_tools_e2d595),
                         key = Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS,
                         icon = Icons.Rounded.Smartphone,
