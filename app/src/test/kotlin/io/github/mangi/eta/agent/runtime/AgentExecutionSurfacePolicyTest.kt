@@ -14,14 +14,15 @@ class AgentExecutionSurfacePolicyTest {
         for (mode in AgentExecutionSurfacePolicy.Mode.entries) {
             assertEquals(AgentExecutionSurfacePolicy.Route.OFFSCREEN_BROWSER,
                 policy.route("browser_use", mode).route)
-            for (tool in listOf("fetch_url", "web_search", "terminal", "read_file", "memory_get")) {
+            for (tool in listOf("fetch_url", "web_search", "read_file", "memory_get")) {
                 assertEquals(tool, AgentExecutionSurfacePolicy.Route.DATA, policy.route(tool, mode).route)
             }
         }
     }
 
     @Test fun backgroundOnlyNeverFallsBackToDisplayZero() {
-        for (tool in listOf("tap", "observe_screen", "launch_app", "open_uri", "type_text", "set_clipboard")) {
+        for (tool in listOf("tap", "observe_screen", "launch_app", "open_uri", "type_text",
+            "set_clipboard", "terminal", "terminal_daemon", "media_control")) {
             val decision = policy.route(
                 tool,
                 AgentExecutionSurfacePolicy.Mode.BACKGROUND_ONLY,
