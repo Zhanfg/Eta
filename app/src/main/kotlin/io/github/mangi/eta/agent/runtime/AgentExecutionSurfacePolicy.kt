@@ -64,7 +64,10 @@ internal object AgentExecutionSurfacePolicy {
             tool in setOf(
                 "set_alarm", "set_timer", "set_clipboard", "get_clipboard",
                 "terminal", "terminal_job", "terminal_daemon",
-                "media_control", "set_volume",
+                "media_control", "set_volume", "set_setting",
+                "set_device_state", "app_state_control", "set_flashlight",
+                "set_brightness", "set_screen_timeout", "set_hotspot",
+                "set_sound_mode", "set_do_not_disturb",
             )
 
     private fun supportsSecondaryDisplay(tool: String): Boolean =
