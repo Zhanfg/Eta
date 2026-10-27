@@ -22,7 +22,8 @@ class AgentExecutionSurfacePolicyTest {
 
     @Test fun backgroundOnlyNeverFallsBackToDisplayZero() {
         for (tool in listOf("tap", "observe_screen", "launch_app", "open_uri", "type_text",
-            "set_clipboard", "terminal", "terminal_daemon", "media_control")) {
+            "set_clipboard", "terminal", "terminal_daemon", "media_control",
+            "set_brightness", "set_device_state", "set_hotspot")) {
             val decision = policy.route(
                 tool,
                 AgentExecutionSurfacePolicy.Mode.BACKGROUND_ONLY,
