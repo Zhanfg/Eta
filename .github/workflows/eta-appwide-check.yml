@@ -6,6 +6,7 @@ on:
       - feature/eta-appwide-kelivo-practices
       - feature/eta-automation-vision-hardening
       - feature/eta-background-workspace
+      - feature/eta-virtual-workspace-module
   workflow_dispatch:
 
 permissions:
@@ -25,6 +26,10 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+
+      - name: Verify system-only LSPosed scope
+        shell: bash
+        run: bash scripts/verify_eta_system_only_scopes.sh
 
       - name: Configure standard ETA Android toolchain
         uses: ./.github/actions/setup-build
