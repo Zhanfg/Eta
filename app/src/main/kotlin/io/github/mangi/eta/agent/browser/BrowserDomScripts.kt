@@ -416,6 +416,7 @@ internal object BrowserDomScripts {
         var total = markdown.length;
         var start = Math.min($offset, total);
         var end = Math.min(start + $maxChars, total);
+        var visualHint = visualContentHint(target, total);
         return {
           text: markdown.slice(start, end),
           text_length: total,
@@ -424,8 +425,8 @@ internal object BrowserDomScripts {
           next_offset: end < total ? end : null,
           truncated: end < total || state.truncated,
           source_truncated: state.truncated,
-          visual_element_count: visualContentHint(target, total).visual_element_count,
-          visual_inspection_recommended: visualContentHint(target, total).visual_inspection_recommended,
+          visual_element_count: visualHint.visual_element_count,
+          visual_inspection_recommended: visualHint.visual_inspection_recommended,
           visited_nodes: state.visited,
           selector_used: selectorFor(target),
           language: cleanInline(document.documentElement.lang, 32) || null,
@@ -455,6 +456,7 @@ internal object BrowserDomScripts {
         var total = value.length;
         var start = Math.min($offset, total);
         var end = Math.min(start + $maxChars, total);
+        var visualHint = visualContentHint(target, total);
         return {
           text: value.slice(start, end),
           text_length: total,
@@ -463,8 +465,8 @@ internal object BrowserDomScripts {
           next_offset: end < total ? end : null,
           truncated: end < total || collected.truncated,
           source_truncated: collected.truncated,
-          visual_element_count: visualContentHint(target, total).visual_element_count,
-          visual_inspection_recommended: visualContentHint(target, total).visual_inspection_recommended,
+          visual_element_count: visualHint.visual_element_count,
+          visual_inspection_recommended: visualHint.visual_inspection_recommended,
           visited_nodes: collected.nodes,
           selector_used: selector || selectorFor(target)
         };
