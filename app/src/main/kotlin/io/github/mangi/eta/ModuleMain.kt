@@ -10,9 +10,16 @@ import io.github.mangi.eta.core.HookInstallation
 import io.github.mangi.eta.core.ModuleConfig
 import io.github.mangi.eta.core.ModuleLogger
 import io.github.mangi.eta.core.safeLogType
+import io.github.mangi.eta.hook.aimemory.ColorOsMemoryHooks
+import io.github.mangi.eta.hook.breeno.BreenoHooks
+import io.github.mangi.eta.hook.colordirect.ColorDirectHooks
+import io.github.mangi.eta.hook.google.GoogleAppHooks
+import io.github.mangi.eta.hook.google.GoogleEligibilityHooks
 import io.github.mangi.eta.hook.hyperos.HyperOsLauncherHooks
+import io.github.mangi.eta.hook.hyperos.HyperOsScreenSearchHooks
 import io.github.mangi.eta.hook.system.SystemServerHooks
 import io.github.mangi.eta.hook.system.SystemUiHooks
+import io.github.mangi.eta.hook.xiaoai.XiaoAiHooks
 
 class ModuleMain : XposedModule() {
 
@@ -46,12 +53,6 @@ class ModuleMain : XposedModule() {
         recordInstallation(SystemServerHooks.install(this, logger, param.classLoader))
     }
 
-    /**
-     * Narrow LSPosed injection scope: only SystemUI and launcher processes.
-     * The workspace bridge uses a privileged module service, NEVER target
-     * app injection. OEM assistant / Google application hooks are disabled in
-     * this experimental branch and require a separate explicit decision.
-     */
     override fun onPackageReady(param: PackageReadyParam) {
         when (param.packageName) {
             in ModuleConfig.XIAOMI_LAUNCHER_PACKAGES -> {
@@ -59,9 +60,63 @@ class ModuleMain : XposedModule() {
                     recordInstallation(HyperOsLauncherHooks.install(this, logger, param.classLoader))
                 }
             }
+
             ModuleConfig.SYSTEM_UI_PACKAGE -> {
                 if (currentProcessName == ModuleConfig.SYSTEM_UI_PACKAGE) {
                     recordInstallation(SystemUiHooks.install(this, logger, param.classLoader))
+                }
+            }
+
+            ModuleConfig.GOOGLE_PACKAGE -> {
+                if (isCurrentPackageProcess(ModuleConfig.GOOGLE_PACKAGE)) {
+                    recordInstallation(
+                        HookInstallation.combine(
+                            group = "Google",
+                            installations = listOf(
+                                GoogleEligibilityHooks.install(this, logger, param.classLoader),
+                                GoogleAppHooks.install(this, logger, param.classLoader)
+                            )
+                        )
+                    )
+                }
+            }
+
+            ModuleConfig.COLOR_DIRECT_PACKAGE -> {
+                if (isCurrentPackageProcess(ModuleConfig.COLOR_DIRECT_PACKAGE)) {
+                    recordInstallation(
+                        ColorDirectHooks.install(this, logger, param.classLoader, param.applicationInfo)
+                    )
+                }
+            }
+
+            ModuleConfig.BREENO_PACKAGE -> {
+                if (isCurrentPackageProcess(ModuleConfig.BREENO_PACKAGE)) {
+                    recordInstallation(
+                        BreenoHooks.install(this, logger, param.classLoader, param.applicationInfo)
+                    )
+                }
+            }
+
+            ModuleConfig.COLOROS_MEMORY_PACKAGE -> {
+                if (currentProcessName == ModuleConfig.COLOROS_MEMORY_PACKAGE) {
+                    recordInstallation(
+                        ColorOsMemoryHooks.install(this, logger, param.classLoader, param.applicationInfo)
+                    )
+                }
+            }
+
+            ModuleConfig.XIAOAI_PACKAGE -> {
+                if (isCurrentPackageProcess(ModuleConfig.XIAOAI_PACKAGE)) {
+                    recordInstallation(HyperOsScreenSearchHooks.install(this, logger, param.classLoader))
+                }
+                if (isCurrentXiaoAiProcess()) {
+                    recordInstallation(
+                        XiaoAiHooks.install(
+                            module = this,
+                            rootLogger = logger,
+                            classLoader = param.classLoader,
+                        )
+                    )
                 }
             }
         }
@@ -79,7 +134,22 @@ class ModuleMain : XposedModule() {
 
     private fun shouldKeepLifecycleCallbacks(param: ModuleLoadedParam): Boolean {
         if (param.isSystemServer) return true
-        return param.processName == ModuleConfig.SYSTEM_UI_PACKAGE ||
-            param.processName in ModuleConfig.XIAOMI_LAUNCHER_PACKAGES
+        val processName = param.processName
+        return processName in ModuleConfig.XIAOMI_LAUNCHER_PACKAGES ||
+            processName == ModuleConfig.SYSTEM_UI_PACKAGE ||
+            isPackageProcess(processName, ModuleConfig.GOOGLE_PACKAGE) ||
+            isPackageProcess(processName, ModuleConfig.COLOR_DIRECT_PACKAGE) ||
+            isPackageProcess(processName, ModuleConfig.BREENO_PACKAGE) ||
+            processName == ModuleConfig.COLOROS_MEMORY_PACKAGE ||
+            isPackageProcess(processName, ModuleConfig.XIAOAI_PACKAGE)
     }
+
+    private fun isCurrentXiaoAiProcess(): Boolean {
+        val processName = currentProcessName ?: return false
+        return processName == ModuleConfig.XIAOAI_PACKAGE ||
+            processName == ModuleConfig.XIAOAI_CORE_PROCESS
+    }
+
+    private fun isPackageProcess(processName: String, packageName: String): Boolean =
+        processName == packageName || processName.startsWith("$packageName:")
 }
