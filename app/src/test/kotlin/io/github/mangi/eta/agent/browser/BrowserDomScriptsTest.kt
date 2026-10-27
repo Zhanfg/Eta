@@ -35,6 +35,17 @@ class BrowserDomScriptsTest {
     }
 
     @Test
+    fun `browser input verifies DOM value but not remote form submission`() {
+        val script = BrowserDomScripts.wrap(
+            BrowserDomScripts.type(selector = "#search", x = null, y = null, text = "hello", submit = true)
+        )
+        assertTrue(script.contains("requireHitTarget(target)"))
+        assertTrue(script.contains("INPUT_NOT_APPLIED"))
+        assertTrue(script.contains("input_value_verified: applied"))
+        assertTrue(script.contains("submit_effect_verified: false"))
+    }
+
+    @Test
     fun `dom text extraction signals when screenshot vision is needed`() {
         val readable = BrowserDomScripts.wrap(BrowserDomScripts.readable(offset = 0, maxChars = 8_000))
         val text = BrowserDomScripts.wrap(BrowserDomScripts.text(selector = null, offset = 0, maxChars = 8_000))
