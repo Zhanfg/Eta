@@ -2,7 +2,7 @@ name: WorkBuddy Android Core Feasibility
 
 on:
   push:
-    branches: [feature/workbuddy-native-integration]
+    branches: [feature/workbuddy-native-integration, feature/eta-appwide-kelivo-practices, feature/eta-automation-vision-hardening]
   workflow_dispatch:
 
 permissions:
