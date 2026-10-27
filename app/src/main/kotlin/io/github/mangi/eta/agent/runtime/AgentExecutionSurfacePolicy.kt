@@ -3,11 +3,9 @@ package io.github.mangi.eta.agent.runtime
 import io.github.mangi.eta.agent.tool.AgentToolRequirements
 
 /**
- * Planning-only contract for future per-run workspace routing.
- *
- * Not wired to AgentLocalTools yet: selecting a virtual display must never
- * silently change the existing runtime until capability tests and UI controls
- * are in place. This policy deliberately fails closed for every Display 0 tool.
+ * A fail-closed routing contract. Runtime currently enforces the BACKGROUND_ONLY
+ * branch before dispatch. Secondary display routing remains capability-gated
+ * until scoped accessibility and screenshot support is implemented.
  */
 internal object AgentExecutionSurfacePolicy {
     enum class Mode {
@@ -45,8 +43,7 @@ internal object AgentExecutionSurfacePolicy {
             "Secondary display must not be Display.DEFAULT_DISPLAY"
         }
         if (tool == "browser_use") return Decision(Route.OFFSCREEN_BROWSER)
-        val primaryDisplayTool = AgentToolRequirements.requiresGuiControl(tool) ||
-            tool == "set_alarm" || tool == "set_timer"
+        val primaryDisplayTool = requiresForegroundSurface(tool)
         if (!primaryDisplayTool) return Decision(Route.DATA)
         if (agentDisplayId != null && supportsSecondaryDisplay(tool)) {
             return Decision(Route.SECONDARY_DISPLAY, displayId = agentDisplayId)
@@ -56,6 +53,19 @@ internal object AgentExecutionSurfacePolicy {
         }
         return Decision(Route.REQUIRE_USER_HANDOVER, needsUserApproval = mode != Mode.BACKGROUND_ONLY)
     }
+
+    /**
+     * Even though the terminal can do ordinary file work, Root shell may call
+     * `am start` or `input` and bypass our display routing. Disable arbitrary
+     * command execution in strict mode until command-scoped sandboxing exists.
+     */
+    fun requiresForegroundSurface(tool: String): Boolean =
+        AgentToolRequirements.requiresGuiControl(tool) ||
+            tool in setOf(
+                "set_alarm", "set_timer", "set_clipboard", "get_clipboard",
+                "terminal", "terminal_job", "terminal_daemon",
+                "media_control", "set_volume",
+            )
 
     private fun supportsSecondaryDisplay(tool: String): Boolean =
         tool in setOf(
