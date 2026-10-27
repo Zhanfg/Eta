@@ -502,9 +502,25 @@ internal class AgentLocalTools(
             logger.debug { "Agent local tool after-action observation failed: type=${throwable.javaClass.simpleName}" }
             return textResult(raw)
         }
-        val elements = after.elementObservation ?: return textResult(raw)
-        // 新快照取代动作前的快照：旧 index 在界面变化后本就不可靠，继续保留只会让模型误用。
-        publishedObservation.set(publishedObservation.get().copy(elements = elements))
+        val elements = after.elementObservation
+        if (elements == null) {
+            // A click may have replaced the window with a canvas, secure screen
+            // or an inaccessible view. Never retain the pre-action node indices.
+            publishedObservation.set(publishedObservation.get().copy(
+                elements = null,
+                coordinateSpace = null,
+            ))
+            result.put("after", JSONObject()
+                .put("observation_available", false)
+                .put("requires_new_observation", true))
+            return textResult(result.toString())
+        }
+        // A node-only observation has no screenshot: invalidate the old
+        // screenshot coordinate mapping, especially after rotation/resizing.
+        publishedObservation.set(publishedObservation.get().copy(
+            elements = elements,
+            coordinateSpace = after.coordinateSpace,
+        ))
         result.put("after", AgentAfterActionSummary.build(before, elements))
         return textResult(result.toString())
     }
