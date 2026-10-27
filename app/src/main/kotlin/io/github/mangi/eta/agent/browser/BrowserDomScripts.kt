@@ -517,7 +517,7 @@ internal object BrowserDomScripts {
         targeted(selector, x, y) +
             """
             if (!editable(target)) throw new Error('TARGET_NOT_EDITABLE');
-            target.scrollIntoView({ block: 'center', inline: 'center' });
+            requireHitTarget(target);
             target.focus();
             var value = ${JSONObject.quote(text)};
             if (target.isContentEditable) {
@@ -530,12 +530,18 @@ internal object BrowserDomScripts {
             }
             target.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: null }));
             target.dispatchEvent(new Event('change', { bubbles: true }));
+            var applied = target.isContentEditable ? target.textContent === value : target.value === value;
+            if (!applied) throw new Error('INPUT_NOT_APPLIED');
             if ($submit) {
               var form = target.form || target.closest('form');
               if (form && form.requestSubmit) form.requestSubmit();
               else target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
             }
-            return { matched_element: describe(target), typed_chars: value.length, submitted: $submit };
+            return {
+              matched_element: describe(target), typed_chars: value.length,
+              input_value_verified: applied, submitted: $submit,
+              submit_effect_verified: false
+            };
             """.trimIndent()
 
     fun scroll(selector: String?, direction: String, amount: Int): String {
