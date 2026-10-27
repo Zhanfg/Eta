@@ -1,12 +1,12 @@
 # ETA Virtual Workspace: generic same-user, multi-app Android execution
 
-**Status as of 2026-10-28:** architecture + app-side scheduler + KSU/Magisk capability-preview source + LSPosed scope restriction. **Not yet a working trusted-display service or installable end-to-end product.** This is intentionally separate from WeChat, any other specific app, and WorkBuddy.
+**Status as of 2026-10-28:** architecture + app-side scheduler + KSU/Magisk capability-preview source + preserved original LSPosed scopes. **Not yet a working trusted-display service or installable end-to-end product.** This is intentionally separate from WeChat, any other specific app, and WorkBuddy.
 
 ## Requirements / invariants
 
 1. Display 0 always belongs to the human. Background tasks NEVER inject display-0 input, change the foreground task, trigger a global BACK, move the IME onto the human display, or silently fall back when a display lease fails.
 2. Run already installed apps **as the same unlocked Android user** to reuse their real profiles and login data. No app clones, duplicated databases, synthetic login state, secondary Android user or remote mirror are created.
-3. Keep ETA LSPosed scopes limited to `system`, `com.android.systemui` and supported launcher processes. Never inject into arbitrary shopping/messaging/banking apps. Existing Google/OEM assistant and memory-hook integration is intentionally disabled on this branch, subject to separate product decision and regression validation.
+3. **Preserve all existing ETA LSPosed scope entries and hook registrations unchanged.** Do not add any new app to the scope for the virtual workspace. Existing system, SystemUI, Google, OEM assistant/memory and launcher integrations remain as before. Background multi-app automation must be provided by the separate KSU/Magisk workspace service, not by adding target-app hooks.
 4. Support 3–4 app **jobs** as a capacity goal with a dynamic one-/two-display pool, not an unconditional promise of four parallel foreground Android Activity instances. The number of usable displays is determined by ROM and RAM conditions.
 5. Use authorized public UI behavior and Android security checks; no anti-detection spoofing, traffic interception, app integrity bypass, automation evasion, private data copying or SELinux permissive state.
 6. Every consequential external side effect gets explicit scope, destination identity, idempotency and post-action readback. Never retry an operation with unknown outcome without checking actual results.
@@ -31,7 +31,7 @@ KernelSU / Magisk module, native companion (planned)                 |
         +-- Focus/IME Guard: never hijack keyboard or focus on Display 0
         +-- Watchdog: process death, display removal, lock, SELinux errors
         |
-        +-- No app-process injection / no login export / no network listener
+        +-- No new target-app hooks / no login export / no network listener
 ```
 
 The bridge shall be a small local `app_process`/native component, inspired by the **on-device service** used by scrcpy (Apache-2.0); no desktop scrcpy client, network control endpoint, or general-purpose Root shell RPC. Root and shell UIDs have different Android display permissions: both must be tested independently. Do not assume Root equals system_server or grants signature permissions. Avoid patching SELinux policy unless evidence demonstrates the minimum scoped rule necessary. Never blanket-disable enforcement.
@@ -111,7 +111,7 @@ Power: adaptive one-display default, only expand pool after memory measurement. 
 
 - [x] Code: app-side scheduler and unit regression tests.
 - [x] Code: per-task merchant/recipient action-authorization policy and unit regression tests.
-- [x] Code: system/SystemUI/launcher-only LSPosed scope in this branch, CI scope guard.
+- [x] Code: restored exact original nine LSPosed scope entries and existing Google/OEM assistant/launcher/system hook registrations; CI verifies no addition or removal.
 - [x] Source: diagnostic-only KSU/Magisk module skeleton.
 - [ ] CI passing at current head (no claim until a fresh run is observed).
 - [ ] Authenticated on-device Root/shell bridge binary with signed build provenance.
