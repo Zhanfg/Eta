@@ -62,10 +62,16 @@ internal object AgentWorkspaceCommitPolicy {
                     else Verdict.REQUIRE_APPROVAL
             }
             Kind.MAKE_PAYMENT -> {
-                // Payment provider confirmation and current-device security
-                // requirements always take precedence over an Agent grant.
-                return if (step.targetVerified && approvalForThisStep) Verdict.ALLOW
-                    else Verdict.REQUIRE_APPROVAL
+                // The grant and a one-time approval can permit *attempting*
+                // the checkout flow, not skipping the payment provider's own
+                // user verification, protected UI or authorization.
+                if (!step.targetVerified ||
+                    step.exactTarget.isNullOrBlank() ||
+                    step.exactTarget !in grant.merchants ||
+                    step.amountMinorUnits == null || step.amountMinorUnits < 0L ||
+                    grant.maximumOrderMinorUnits == null ||
+                    step.amountMinorUnits > grant.maximumOrderMinorUnits) return Verdict.REJECT
+                return if (approvalForThisStep) Verdict.ALLOW else Verdict.REQUIRE_APPROVAL
             }
         }
     }
