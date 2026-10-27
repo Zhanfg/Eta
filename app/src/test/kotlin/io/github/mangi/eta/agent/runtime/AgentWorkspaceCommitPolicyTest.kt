@@ -67,7 +67,7 @@ class AgentWorkspaceCommitPolicyTest {
             exactTarget = "known-shop", amountMinorUnits = 1200,
             targetVerified = false, displayId = 17
         )
-        assertEquals(AgentWorkspaceCommitPolicy.Verdict.REQUIRE_APPROVAL,
+        assertEquals(AgentWorkspaceCommitPolicy.Verdict.REJECT,
             AgentWorkspaceCommitPolicy.check(step, grant, 5000L, approvalForThisStep = true))
         assertEquals(AgentWorkspaceCommitPolicy.Verdict.REJECT,
             AgentWorkspaceCommitPolicy.check(step, grant, 10000L, approvalForThisStep = true))
