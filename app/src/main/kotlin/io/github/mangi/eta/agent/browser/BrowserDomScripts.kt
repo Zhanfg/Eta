@@ -68,9 +68,47 @@ internal object BrowserDomScripts {
             return rect.width > 0 && rect.height > 0 && element.getClientRects().length > 0;
           }
           function enabled(element) {
-            return visible(element) && !element.disabled &&
-              element.getAttribute('aria-disabled') !== 'true' &&
-              !element.hasAttribute('inert');
+            if (!visible(element)) return false;
+            var ancestor = element;
+            var depth = 0;
+            while (ancestor && depth < 40) {
+              if (ancestor.disabled || ancestor.getAttribute('aria-disabled') === 'true' ||
+                  ancestor.hasAttribute('inert')) return false;
+              ancestor = ancestor.parentElement;
+              depth++;
+            }
+            return !element.matches(':disabled');
+          }
+          function requireHitTarget(target) {
+            if (!visible(target)) throw new Error('TARGET_NOT_VISIBLE');
+            if (!enabled(target)) throw new Error('TARGET_DISABLED');
+            target.scrollIntoView({ block: 'center', inline: 'center' });
+            var rect = target.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2;
+            var cy = rect.top + rect.height / 2;
+            if (rect.width <= 0 || rect.height <= 0 ||
+                cx < 0 || cy < 0 || cx >= window.innerWidth || cy >= window.innerHeight) {
+              throw new Error('TARGET_NOT_VISIBLE');
+            }
+            var hit = document.elementFromPoint(cx, cy);
+            if (!hit || !(hit === target || target.contains(hit) || hit.contains(target))) {
+              throw new Error('TARGET_OCCLUDED');
+            }
+            return { x: cx, y: cy };
+          }
+          function visualContentHint(root, extractedChars) {
+            if (!root || !root.querySelectorAll) return {
+              visual_element_count: 0, visual_inspection_recommended: false
+            };
+            var candidates = root.querySelectorAll('img,canvas,svg,object,embed,video');
+            var visibleCount = 0;
+            for (var i = 0; i < candidates.length && i < 200; i++) {
+              if (visible(candidates[i])) visibleCount++;
+            }
+            return {
+              visual_element_count: visibleCount,
+              visual_inspection_recommended: extractedChars < 32 && visibleCount > 0
+            };
           }
           function editable(element) {
             if (!enabled(element) || element.readOnly) return false;
@@ -186,9 +224,12 @@ internal object BrowserDomScripts {
           }
           function resolveTarget(selector, x, y) {
             var target = null;
-            var deadline = Date.now() + 300;
             if (selector) {
-              target = document.querySelector(selector);
+              var matches = document.querySelectorAll(selector);
+              for (var index = 0; index < matches.length && index < 2000; index++) {
+                if (visible(matches[index])) { target = matches[index]; break; }
+              }
+              if (!target && matches.length) throw new Error('TARGET_NOT_VISIBLE');
             } else if (Number.isFinite(x) && Number.isFinite(y)) {
               target = document.elementFromPoint(x, y);
             }
@@ -453,15 +494,17 @@ internal object BrowserDomScripts {
     fun click(selector: String?, x: Int?, y: Int?): String =
         targeted(selector, x, y) +
             """
-            target.scrollIntoView({ block: 'center', inline: 'center' });
-            var rect = target.getBoundingClientRect();
-            var cx = rect.left + rect.width / 2;
-            var cy = rect.top + rect.height / 2;
+            var center = requireHitTarget(target);
+            var matched = describe(target);
             ['mousemove','mouseover','mousedown','mouseup'].forEach(function(kind) {
-              target.dispatchEvent(new MouseEvent(kind, { bubbles: true, cancelable: true, clientX: cx, clientY: cy }));
+              target.dispatchEvent(new MouseEvent(kind, {
+                bubbles: true, cancelable: true, clientX: center.x, clientY: center.y
+              }));
             });
             target.click();
-            return { matched_element: describe(target) };
+            // Synthetic DOM click can be ignored by pages requiring trusted user input.
+            // We only attest dispatch, never claim the page side-effect was verified.
+            return { matched_element: matched, event_dispatched: true, action_verified: false };
             """.trimIndent()
 
     fun type(selector: String?, x: Int?, y: Int?, text: String, submit: Boolean): String =
