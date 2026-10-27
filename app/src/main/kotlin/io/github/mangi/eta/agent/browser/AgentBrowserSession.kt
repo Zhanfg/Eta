@@ -824,16 +824,26 @@ internal class AgentBrowserSession(
             .getOrElse { throw BrowserFailure("SCRIPT_FAILED", "网页结果格式无效") }
         if (!envelope.optBoolean("ok", false)) {
             val code = envelope.optString("error")
-            val message = when {
-                code.contains("TARGET_NOT_FOUND") ||
-                    code.contains("TARGET_NOT_VISIBLE") ||
-                    code.contains("TARGET_OCCLUDED") -> "目标网页元素不可见或被其他内容遮挡"
-                code.contains("TARGET_DISABLED") -> "目标网页元素当前不可操作"
-                code.contains("TARGET_NOT_EDITABLE") -> "目标网页元素不可输入"
-                code.contains("not a valid selector", ignoreCase = true) -> "CSS selector 无效"
+            val safeCode = when {
+                code.contains("TARGET_NOT_FOUND") -> "TARGET_NOT_FOUND"
+                code.contains("TARGET_NOT_VISIBLE") -> "TARGET_NOT_VISIBLE"
+                code.contains("TARGET_OCCLUDED") -> "TARGET_OCCLUDED"
+                code.contains("TARGET_DISABLED") -> "TARGET_DISABLED"
+                code.contains("TARGET_NOT_EDITABLE") -> "TARGET_NOT_EDITABLE"
+                code.contains("INPUT_NOT_APPLIED") -> "INPUT_NOT_APPLIED"
+                code.contains("not a valid selector", ignoreCase = true) -> "INVALID_SELECTOR"
+                else -> "SCRIPT_FAILED"
+            }
+            val message = when (safeCode) {
+                "TARGET_NOT_FOUND", "TARGET_NOT_VISIBLE" -> "没有可见的匹配网页元素"
+                "TARGET_OCCLUDED" -> "目标网页元素被其他内容遮挡；请重新查找元素或截图"
+                "TARGET_DISABLED" -> "目标网页元素当前被禁用"
+                "TARGET_NOT_EDITABLE" -> "目标网页元素不可输入"
+                "INPUT_NOT_APPLIED" -> "输入值未被网页接受，请重新检查目标输入框"
+                "INVALID_SELECTOR" -> "CSS selector 无效"
                 else -> "网页元素操作失败"
             }
-            throw BrowserFailure("SCRIPT_FAILED", message)
+            throw BrowserFailure(safeCode, message)
         }
         val value = envelope.opt("value")
         if (value == null || value === JSONObject.NULL) return JSONObject()
@@ -926,7 +936,7 @@ internal class AgentBrowserSession(
     private fun failureResult(action: String, throwable: Throwable): BrowserToolResult {
         val failure = throwable as? BrowserFailure
         val message = failure?.message ?: if (throwable is JSONException) throwable.message.orEmpty() else "浏览器操作失败"
-        if (failure?.code !in setOf("CANCELLED", "USER_CONTROL_ACTIVE")) {
+        if (failure?.code !in setOf("CANCELLED", "USER_CONTROL_ACTIVE", "ACTION_OUTCOME_UNKNOWN")) {
             runCatching {
                 callOnMain {
                     currentLoading = false
