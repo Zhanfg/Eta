@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/workbuddy-native-integration
+      - feature/eta-appwide-kelivo-practices
   workflow_dispatch:
 
 permissions:
