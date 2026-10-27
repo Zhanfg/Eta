@@ -40,6 +40,30 @@ class BrowserActionArgumentsTest {
         }
     }
 
+    @Test
+    fun browserJsErrorsPreserveSafeRetryableCodes() {
+        val decode = AgentBrowserSession::class.java.getDeclaredMethod(
+            "decodeEvaluation", String::class.java
+        ).apply { isAccessible = true }
+        val render = AgentBrowserSession::class.java.getDeclaredMethod(
+            "failureResult", String::class.java, Throwable::class.java
+        ).apply { isAccessible = true }
+        for (code in listOf(
+            "TARGET_NOT_FOUND", "TARGET_NOT_VISIBLE", "TARGET_OCCLUDED",
+            "TARGET_DISABLED", "TARGET_NOT_EDITABLE", "INPUT_NOT_APPLIED"
+        )) {
+            val envelope = JSONObject().put("ok", false).put("error", code).toString()
+            val failure = try {
+                decode.invoke(session, JSONObject.quote(envelope))
+                throw AssertionError("JS error was accepted: $code")
+            } catch (e: InvocationTargetException) {
+                checkNotNull(e.cause)
+            }
+            val response = render.invoke(session, "click", failure) as BrowserToolResult
+            assertEquals(code, JSONObject(response.content).getString("code"))
+        }
+    }
+
     private fun actionFailure(action: String, args: JSONObject): Throwable {
         val method = AgentBrowserSession::class.java.getDeclaredMethod(action, JSONObject::class.java)
             .apply { isAccessible = true }
