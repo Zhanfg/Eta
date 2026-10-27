@@ -62,6 +62,7 @@ import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.accessibility.AccessibilityProtectionClient
 import io.github.mangi.eta.agent.accessibility.AgentAccessibilityService
 import io.github.mangi.eta.config.PowerAssistantTarget
+import io.github.mangi.eta.agent.runtime.BackgroundDisplayCapabilityProbe
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
@@ -380,6 +381,37 @@ private fun SettingsPageContent(
                         key = Prefs.Keys.AGENT_BACKGROUND_ONLY,
                         icon = Icons.Rounded.Smartphone,
                         iconTint = EtaPreferenceColors.Blue,
+                    )
+
+                    EtaPreferenceDivider()
+                    EtaArrowPreference(
+                        title = "检测微信后台独立显示支持",
+                        summary = "只检查系统虚拟显示和微信启动权限，不启动微信、不读取数据或操作屏幕",
+                        startAction = {
+                            EtaPreferenceIcon(
+                                icon = Icons.Rounded.Visibility,
+                                tint = EtaPreferenceColors.Blue,
+                            )
+                        },
+                        onClick = {
+                            coroutineScope.launch {
+                                val result = withContext(Dispatchers.Default) {
+                                    BackgroundDisplayCapabilityProbe.inspect(
+                                        context.applicationContext, "com.tencent.mm"
+                                    )
+                                }
+                                val message = when (result.code) {
+                                    "LAUNCH_POLICY_ALLOWED_NOT_TESTED" -> "显示启动权限初检允许，但输入和实际微信运行仍需真机验证"
+                                    "THIRD_PARTY_LAUNCH_RESTRICTED" -> "系统禁止 ETA 在自有虚拟屏启动微信，需要另一条获授权的系统通路"
+                                    "APP_NOT_INSTALLED_OR_NO_LAUNCHER" -> "未找到微信或当前用户不可见其启动入口"
+                                    "NO_SECONDARY_DISPLAY_FEATURE" -> "本系统不支持多显示 Activity"
+                                    else -> "后台显示能力检测：${result.code}"
+                                }
+                                Toast.makeText(
+                                    context.applicationContext, message, Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        },
                     )
 
                     EtaPreferenceDivider()
