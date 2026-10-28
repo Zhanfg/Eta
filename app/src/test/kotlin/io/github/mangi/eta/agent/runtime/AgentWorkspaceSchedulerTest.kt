@@ -2,6 +2,7 @@ package io.github.mangi.eta.agent.runtime
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -26,14 +27,19 @@ class AgentWorkspaceSchedulerTest {
             (scheduler.request("price", "com.store.gamma") as AgentWorkspaceScheduler.Admission.Deferred).reason)
         assertEquals(AgentWorkspaceScheduler.Reason.WAITING_FOR_DISPLAY,
             (scheduler.request("notes", "com.notes.delta") as AgentWorkspaceScheduler.Admission.Deferred).reason)
-        assertEquals("price", scheduler.nextReadyTaskId())
+        assertNull(scheduler.nextReadyTaskId())
         assertEquals(AgentWorkspaceScheduler.Reason.CAPACITY_REACHED,
             (scheduler.request("fifth", "com.extra.epsilon") as AgentWorkspaceScheduler.Admission.Deferred).reason)
 
         scheduler.complete("search")
+        assertEquals("price", scheduler.nextReadyTaskId())
         assertEquals(AgentWorkspaceScheduler.Admission.Granted("price", "com.store.gamma", 11),
             scheduler.request("price", "com.store.gamma"))
+        assertNull(scheduler.nextReadyTaskId())
+        scheduler.complete("chat")
         assertEquals("notes", scheduler.nextReadyTaskId())
+        assertEquals(AgentWorkspaceScheduler.Admission.Granted("notes", "com.notes.delta", 12),
+            scheduler.request("notes", "com.notes.delta"))
     }
 
     @Test fun foregroundAppOwnershipWinsOverVirtualWorkspace() {
