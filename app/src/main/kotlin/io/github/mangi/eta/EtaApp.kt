@@ -51,6 +51,11 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         Prefs.initLocal(this)
         WorkBuddyLocalVault.init(this)
         WorkBuddyEmbeddedCore.init(this)
+        // Restore refreshed Go auth files before the next app-driven core start.
+        // Failure must not abort ETA's Application startup or leak credentials.
+        applicationScope.launch {
+            runCatching { WorkBuddyEmbeddedCore.recoverAfterUnexpectedExit() }
+        }
         if (!AppProcessPolicy.shouldInitializeFullRuntime(Application.getProcessName(), packageName)) {
             return
         }
