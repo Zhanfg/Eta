@@ -1,6 +1,6 @@
 id=eta_workspace
-name=ETA Workspace Companion (IPC Probe)
-version=0.2.0-alpha01
-versionCode=20001
+name=ETA Workspace Companion (Display Feasibility)
+version=0.2.0-alpha02
+versionCode=20002
 author=ETA contributors
-description=KSU/Magisk module with UID-authenticated local IPC and capability diagnostics; no display/app control yet
+description=KSU/Magisk module with authenticated local IPC and opt-in blank trusted-display feasibility check; no app automation yet
