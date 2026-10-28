@@ -50,7 +50,8 @@ class WorkBuddyRuntimeDeviceTest {
                 val auth = JSONObject().put("accessToken", "fixture-invalid-access-" + index)
                     .put("refreshToken", "fixture-invalid-refresh-" + index).put("realm", "cn")
                 zip.putNextEntry(ZipEntry("workbuddy-fixture-" + index + ".json"))
-                zip.write(JSONObject().put("account", account).put("auth", auth).toString().toByteArray())
+                zip.write(JSONObject().put("account", account).put("auth", auth)
+                    .put("device_token", "fixture-invalid-device-" + index).toString().toByteArray())
                 zip.closeEntry()
             }
         }
@@ -60,6 +61,9 @@ class WorkBuddyRuntimeDeviceTest {
         val encrypted = File(fixture, "workbuddy-accounts-v1.bin").readBytes().toString(Charsets.ISO_8859_1)
         assertFalse(encrypted.contains("fixture-invalid-access"))
         assertFalse(encrypted.contains("synthetic-account"))
+        assertFalse(encrypted.contains("fixture-invalid-device"))
+        assertEquals((1..5).map { "fixture-invalid-device-" + it }.toSet(),
+            WorkBuddyLocalVault.snapshotForCore().map { it.deviceToken }.toSet())
         source.delete()
     }
 
@@ -69,6 +73,10 @@ class WorkBuddyRuntimeDeviceTest {
         repeat(2) {
             val endpoint = WorkBuddyEmbeddedCore.ensureStarted()
             assertTrue(WorkBuddyEmbeddedCore.isRunning())
+            val nativeAccounts = File(fixture, "workbuddy-native/auths").listFiles().orEmpty()
+            assertEquals(5, nativeAccounts.size)
+            assertEquals((1..5).map { "fixture-invalid-device-" + it }.toSet(),
+                nativeAccounts.map { JSONObject(it.readText()).getString("device_token") }.toSet())
             val connection = URL(endpoint.baseUrl.removeSuffix("/v1") + "/status").openConnection() as HttpURLConnection
             connection.connectTimeout = 5000
             connection.readTimeout = 5000

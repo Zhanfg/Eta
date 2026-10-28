@@ -1,5 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <!-- Isolated backend fixture app; do not initialize unrelated production services. -->
-    <application android:name="android.app.Application" tools:replace="android:name" />
+    <application android:name="android.app.Application" tools:replace="android:name">
+        <!-- The health authority is fixed in production; omit it to allow side-by-side tests. -->
+        <provider android:name="io.github.mangi.eta.agent.accessibility.AgentAccessibilityHealthProvider" tools:node="remove" />
+        <provider android:name="androidx.startup.InitializationProvider" tools:node="remove" />
+        <provider android:name="io.github.libxposed.service.XposedProvider" tools:node="remove" />
+    </application>
 </manifest>

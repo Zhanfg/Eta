@@ -38,6 +38,8 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none
           script: ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g -Peta.nativeAbi=x86_64 -Peta.runtimeTests=true :app:connectedRuntimeTestAndroidTest
+      - name: Require all four Android tests to execute and pass
+        run: python3 scripts/verify_workbuddy_runtime.py
       # Do not upload vaults, synthetic account archives or raw process/logcat logs.
   arm64-apk:
     runs-on: ubuntu-latest

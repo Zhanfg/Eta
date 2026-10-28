@@ -1,5 +1,7 @@
 # Eta 3.3.5 WorkBuddy: build evidence and remaining device acceptance
 
+The CGO-disabled artifacts referenced below are historical build evidence and have an Android DNS defect. Use [the runtime repair](WORKBUDDY_ANDROID_RUNTIME_FIX.md) and [PR #11](https://github.com/Zhanfg/Eta/pull/11) for the replacement APK and actual Android runtime results.
+
 ## Existing build, verified through GitHub on 2026-10-28
 
 Source: `release/eta-workbuddy-mvp-v1@1f33c90801c32ef438bedb7f6acd9528983a6719`.
@@ -32,7 +34,7 @@ The new Python/Kotlin tests and stricter script require their own successful wor
 
 ## Local/CI reproduction
 
-Use JDK 25, Go 1.25.x, Python 3, Android command-line tools, SDK 37 and build-tools, plus the repository's Gradle Wrapper.
+Use JDK 25, Go 1.25.x, Python 3, Android command-line tools, SDK 37, NDK 30.0.16248370 and build-tools, plus the repository's Gradle Wrapper.
 
 ```bash
 python3 -m unittest discover -s scripts/tests -v
