@@ -138,29 +138,26 @@ internal fun WorkBuddyLocalTab(
                                     confirmImport = false
                                     val uri = selectedFile
                                     if (uri != null) work {
+                                        // Stop the old Go pool BEFORE changing the vault, so
+                                        // stale, in-flight refresh snapshots cannot overwrite an
+                                        // explicitly imported newer desktop credential. A busy
+                                        // stream stops the import rather than silently killing it.
+                                        if (WorkBuddyEmbeddedCore.isBundled()) {
+                                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
+                                        }
                                         val imported = withContext(Dispatchers.IO) {
                                             WorkBuddyLocalVault.importJson(context, uri)
                                         }
+                                        // A successful local import is OFFLINE. Fake/expired
+                                        // credentials must not cause an implicit upstream
+                                        // request that makes successful imports look broken.
                                         accounts = withContext(Dispatchers.IO) { WorkBuddyLocalVault.summaries() }
-                                        // Force the embedded Go pool to reload the new encrypted imports.
-                                        if (WorkBuddyEmbeddedCore.isBundled()) {
-                                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
-                                            backendStatus = "待启动"
-                                        }
+                                        availableModels = null
+                                        modelChoices = emptyList()
+                                        backendStatus = "账号已导入，等待启动"
                                         selectedFile = null
                                         preview = null
-                                        message = "本地导入：新增 ${imported.added}、更新凭据 ${imported.refreshed}、共 ${imported.total} 个账号。正在同步可用模型。"
-                                        runCatching {
-                                            val models = WorkBuddyLocalModels.fetch()
-                                            ModelRepository.syncRemoteModels(provider.id, models, models.mapTo(HashSet()) { it.modelId })
-                                            modelChoices = ProviderRepository.providerById(provider.id)?.models.orEmpty()
-                                            RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
-                                            availableModels = models.size
-                                        }.onFailure {
-                                            message = "账号已安全保存，但模型列表未同步：${it.javaClass.simpleName}。请检查网络后点击「重新同步模型」。"
-                                        }.onSuccess {
-                                            message = "导入完成：本机已有 ${imported.total} 个账号，发现 ${availableModels} 个模型。请到「模型」页启用并选择模型。"
-                                        }
+                                        message = "本机导入成功：新增 ${imported.added}、更新 ${imported.refreshed}，共保存 ${imported.total} 个账号。凭据已写入加密账号库。下一步可点「启动并验证原生后端」，真实凭据再点「重新同步模型」。"
                                     }
                                 }
                             },
