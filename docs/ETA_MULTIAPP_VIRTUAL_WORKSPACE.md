@@ -131,3 +131,19 @@ Power: adaptive one-display default, only expand pool after memory measurement. 
 - AOSP input methods: https://source.android.com/docs/core/display/multi_display/ime-support
 - scrcpy display owner: https://github.com/Genymobile/scrcpy/blob/master/server/src/main/java/com/genymobile/scrcpy/video/NewDisplayCapture.java
 - KSU modules: https://kernelsu.org/guide/module.html
+
+## Implementation update: 0.2.0-alpha02 — privileged-display feasibility (not a complete backend)
+
+- The KSU/Magisk manager Action now runs an **opt-in, one-shot Android app_process display probe**. It requests a blank trusted virtual display on the existing device with documented scrcpy-style flags, then **always releases** the display and exits. There are **no third-party Activity launches, gestures, screenshot exports or account reads**. A failed permission or hidden-framework lookup returns an explicit result code. A successful display-created report does not imply multi-app support.
+- `AgentWorkspaceDisplayObserver` and `AgentAccessibilityService.observeWorkspaceDisplay` implement **read-only, display-targeted window/visible-text snapshots** using `windowsOnAllDisplays[displayId]`. `displayId<=0` is rejected; the physical `rootInActiveWindow` path is never used by this API. This read-only primitive must be connected to verified leases before model-side use.
+- `AgentWorkspaceCheckpointStore` durably records only step identity, package and phase; it deliberately does **not** store chat messages, screenshots, cookies, purchase details or tokens. A previously prepared/in-flight write is **RECONCILE_REQUIRED** after process recovery; orders/messages are not resent on restart unless externally verified. Its Robolectric tests cover crash transitions and duplicate-write guard behavior.
+- CI source now attempts host bridge UID-auth smoke tests, Kotlin/Robolectric tests, Android ARM64 native build, and Java-to-DEX packaging of the opt-in privileged display probe. **No current-head GitHub Actions success has been observed.**
+- A separate **Draft PR #8** targets `main` solely for main branch integration CI without merging; the normal incremental changes remain in PR #7. Neither PR has been merged.
+- Current module is `0.2.0-alpha02`. It is still **not** a functional secondary-display app automation service. A persistent lease owner, verified app placement, display-scoped gestures/IME and main-runtime job integration remain mandatory.
+
+### Immediate test acceptance
+
+1. KSU/Magisk Action prints `DISPLAY_CREATED id=N` with N>0 followed by `PROBE_CLEANED_UP`; OR prints an explicit permission/framework/unsupported result, with no Display 0 effect.
+2. After Action, the extra display no longer exists. If creation succeeds, this is only permission feasibility; it does not certify activity launch or input.
+3. Strict background mode continues to reject foreground gestures, clipboard, app launch and arbitrary terminal commands until authenticated, isolated routes exist.
+4. CI must pass Kotlin, Java/D8, native ARM64 and original LSPosed scope checks before any module ZIP is called build-verified.
