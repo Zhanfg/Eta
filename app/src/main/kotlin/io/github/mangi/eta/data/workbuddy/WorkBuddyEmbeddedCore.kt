@@ -32,8 +32,39 @@ internal object WorkBuddyEmbeddedCore {
     @Volatile private var context: Context? = null
     private var running: java.lang.Process? = null
     private var endpoint: Endpoint? = null
+    private var activeAgentRequests: Int = 0
+
+    /**
+     * A model request holds a lease for its entire SSE/tool generation. Do not
+     * kill the Go pool during an in-flight ETA Agent operation.
+     */
+    fun <T> withActiveRequest(block: (Endpoint) -> T): T {
+        val current = synchronized(lock) {
+            val e = ensureStarted()
+            activeAgentRequests++
+            e
+        }
+        try {
+            return block(current)
+        } finally {
+            synchronized(lock) { activeAgentRequests-- }
+        }
+    }
+
 
     fun init(ctx: Context) { context = ctx.applicationContext }
+
+    /**
+     * Cold-start hygiene, invoked on a background dispatcher after EtaApp
+     * initializes Keystore. If Android killed the previous run, recover
+     * refreshed tokens and securely leave no stale runtime auth JSON behind.
+     * A normal running core is never interrupted by this path.
+     */
+    fun recoverAfterUnexpectedExit(): Boolean = synchronized(lock) {
+        if (running?.isAlive == true) return false
+        context?.let { recoverPrivateSnapshots(it) }
+        true
+    }
 
     fun isBundled(): Boolean {
         val ctx = context ?: return false
@@ -55,8 +86,38 @@ internal object WorkBuddyEmbeddedCore {
 
     private fun writeLocked(file: File, text: String) {
         file.parentFile?.mkdirs()
-        file.writeText(text, Charsets.UTF_8)
-        Os.chmod(file.absolutePath, 384) // 0600: Android app UID only
+        // Create with mode 0600 *before* any auth/config bytes are written.
+        // File.writeText then chmod leaves a transient permissive window.
+        val fd = Os.open(
+            file.absolutePath,
+            android.system.OsConstants.O_WRONLY or
+                android.system.OsConstants.O_CREAT or
+                android.system.OsConstants.O_TRUNC or
+                android.system.OsConstants.O_NOFOLLOW,
+            384,
+        )
+        java.io.FileOutputStream(fd).use { output ->
+            Os.chmod(file.absolutePath, 384)
+            output.write(text.toByteArray(Charsets.UTF_8))
+            output.fd.sync()
+        }
+    }
+
+    /**
+     * Recovery-first restart. A killed Android process may leave the Go core's
+     * refreshed credentials on disk. Merge them into the Keystore *before*
+     * rewriting any auth file. Never delete snapshots when decryption fails.
+     */
+    private fun recoverPrivateSnapshots(ctx: Context) {
+        val authDir = File(baseDir(ctx), "auths")
+        val snapshots = authDir.listFiles()?.filter {
+            it.isFile && it.name.startsWith("workbuddy-") && it.extension == "json"
+        }.orEmpty()
+        if (snapshots.isEmpty()) return
+        WorkBuddyLocalVault.ingestCoreRefreshes(authDir)
+        snapshots.forEach { file ->
+            check(file.delete()) { "无法清理旧账号快照；已暂停启动，避免泄漏凭据" }
+        }
     }
 
     private fun writeAccounts(ctx: Context): Int {
@@ -93,8 +154,11 @@ internal object WorkBuddyEmbeddedCore {
     private fun health(endpoint: Endpoint): Boolean {
         val connection = (URL(endpoint.baseUrl.removeSuffix("/v1") + "/healthz")
             .openConnection() as HttpURLConnection)
-        connection.connectTimeout = 300
-        connection.readTimeout = 400
+        // A mobile Go subprocess may need extra time while the device is
+        // busy/thermal-throttled. This probe must not incorrectly mark a
+        // healthy process as dead due to a 300 ms startup connect timeout.
+        connection.connectTimeout = 1_000
+        connection.readTimeout = 1_000
         connection.instanceFollowRedirects = false
         return try {
             connection.requestMethod = "GET"
@@ -120,6 +184,9 @@ internal object WorkBuddyEmbeddedCore {
         val ctx = checkNotNull(context) { "ETA 尚未初始化 WorkBuddy 运行时" }
         val binary = File(ctx.applicationInfo.nativeLibraryDir, "libwbcore.so")
         check(binary.isFile) { "APK 未打包 Android ARM64 Go 核心。请使用带原生核心的验证包" }
+        // KELIVO-style reversible recovery: persist existing state before making
+        // changes, including when a previous process was killed by Android.
+        stop()
         val accounts = writeAccounts(ctx)
         require(accounts > 0) { "请先导入 WorkBuddy 账号 JSON" }
 
@@ -161,6 +228,9 @@ internal object WorkBuddyEmbeddedCore {
                 .redirectErrorStream(true)
                 .start()
         } catch (error: Exception) {
+            // Failed exec must not leave cleartext credentials indefinitely.
+            // Recovery failure is surfaced rather than deleting recoverable data.
+            recoverPrivateSnapshots(ctx)
             throw IllegalStateException("Android 无法启动 WB Go 核心：${error.javaClass.simpleName}")
         }
         running = process
@@ -173,19 +243,29 @@ internal object WorkBuddyEmbeddedCore {
         }, "wb-core-output").apply { isDaemon = true; start() }
 
         val e = Endpoint("http://127.0.0.1:$port/v1", key)
-        repeat(32) {
-            if (process.isAlive && health(e)) {
+        // Monotonic time budget: per-probe network timeouts are part of
+        // startup elapsed time. The old repeat(32)*150ms estimate did not
+        // account for connect/read and could report a false 4.8s deadline.
+        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000L
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (!process.isAlive) {
+                val exit = runCatching { process.exitValue() }.getOrNull()
+                running = null
+                endpoint = null
+                throw IllegalStateException("WB Go 核心启动失败（exit=$exit）；请检查 APK 原生核心及系统权限")
+            }
+            if (health(e)) {
                 endpoint = e
                 return e
             }
-            if (!process.isAlive) throw IllegalStateException(
-                "WB Go 核心在启动期间退出（exit=${runCatching { process.exitValue() }.getOrNull()}）"
-            )
-            Thread.sleep(150)
+            Thread.sleep(250)
         }
         process.destroy()
+        runCatching { process.waitFor(2, TimeUnit.SECONDS) }
+        if (process.isAlive) process.destroyForcibly()
         running = null
-        throw IllegalStateException("WB Go 核心在 4.8 秒内未响应健康检查")
+        endpoint = null
+        throw IllegalStateException("WB Go 核心在启动期限内未响应本机健康检查")
     }
 
     /**
@@ -193,21 +273,20 @@ internal object WorkBuddyEmbeddedCore {
      * AES-GCM Keystore vault. Do not print or return any raw tokens.
      */
     fun stop() = synchronized(lock) {
+        check(activeAgentRequests == 0) {
+            "仍有 ${activeAgentRequests} 个 Agent 调用运行中，结束后才能停止或重新导入订阅"
+        }
         val process = running
         process?.destroy()
         if (process != null) {
             runCatching { process.waitFor(3, TimeUnit.SECONDS) }
             if (process.isAlive) process.destroyForcibly()
         }
-        val home = context?.let(::baseDir)
-        if (home != null) {
-            runCatching { WorkBuddyLocalVault.ingestCoreRefreshes(File(home, "auths")) }
-            File(home, "auths").listFiles()?.filter {
-                it.name.startsWith("workbuddy-") && it.extension == "json"
-            }?.forEach { it.delete() }
-        }
         running = null
         endpoint = null
+        // Fail closed: a vault/Keystore error must never silently purge the
+        // last refreshed credentials. Snapshots remain private for recovery.
+        context?.let { recoverPrivateSnapshots(it) }
     }
 
     /** Re-read JSON after confirmed import. Never reload while requests run. */
