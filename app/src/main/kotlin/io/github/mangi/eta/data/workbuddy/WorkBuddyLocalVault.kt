@@ -3,6 +3,7 @@ package io.github.mangi.eta.data.workbuddy
 import android.content.Context
 import android.net.Uri
 import android.security.keystore.KeyGenParameterSpec
+import android.util.AtomicFile
 import android.security.keystore.KeyProperties
 import java.io.File
 import java.security.KeyStore
@@ -108,8 +109,9 @@ internal object WorkBuddyLocalVault {
 
     private fun read(): MutableList<Account> {
         val file = path()
-        if (!file.exists()) return mutableListOf()
-        val data = file.readBytes()
+        if (!file.exists() && !File(file.path + ".new").exists() &&
+            !File(file.path + ".bak").exists()) return mutableListOf()
+        val data = AtomicFile(file).readFully()
         require(data.size > 16 && data.size < LIMIT * 2) { "本地账号库文件损坏" }
         val nonce = data.copyOfRange(0, 12)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
@@ -125,10 +127,17 @@ internal object WorkBuddyLocalVault {
         }
         val plaintext = codec.encodeToString(accounts).toByteArray()
         val encoded = cipher.iv + cipher.doFinal(plaintext)
-        val target = path()
-        val tmp = File(target.parentFile, "$FILE.tmp")
-        tmp.outputStream().use { it.write(encoded); it.flush() }
-        check(tmp.renameTo(target)) { "保存本地账号失败" }
+        // AtomicFile fsyncs the new encrypted snapshot before swapping it
+        // into place. Runtime and encrypted environment have separate lifetimes.
+        val atomic = AtomicFile(path())
+        val output = atomic.startWrite()
+        try {
+            output.write(encoded)
+            atomic.finishWrite(output)
+        } catch (error: Throwable) {
+            atomic.failWrite(output)
+            throw error
+        }
     }
 
     // No getters expose bearer tokens outside the provider runtime.
@@ -139,15 +148,30 @@ internal object WorkBuddyLocalVault {
      * Import refreshed access tokens from the Go core after graceful shutdown.
      * Files are never exposed via Android's exported providers.
      */
+    /**
+     * Reject credentials older than a previously imported desktop export.
+     * Android crash recovery may encounter stale Go snapshots.
+     */
+    internal fun canRecoverToken(oldExpiry: Long, candidateExpiry: Long): Boolean =
+        oldExpiry <= 0L || candidateExpiry >= oldExpiry
+
+    /** A desktop import always wins over a snapshot left by an older Go process. */
+    internal fun canRecoverSnapshot(snapshotModifiedAt: Long, vaultModifiedAt: Long): Boolean =
+        snapshotModifiedAt > 0 && (vaultModifiedAt <= 0 || snapshotModifiedAt >= vaultModifiedAt)
+
     fun ingestCoreRefreshes(directory: File): Int = synchronized(lock) {
         val known = read()
         if (known.isEmpty() || !directory.isDirectory) return@synchronized 0
         val byUid = known.withIndex().associate { it.value.uid to it.index }
+        val vaultSavedAt = path().lastModified()
         var count = 0
         directory.listFiles()?.filter { it.isFile && it.name.startsWith("workbuddy-") && it.extension == "json" }
             ?.take(200)?.forEach { file ->
                 try {
                     if (file.length() > 65_536) return@forEach
+                    // Manually imported credentials newer than this orphaned
+                    // Go file win, even if expiration timestamps are equal.
+                    if (!canRecoverSnapshot(file.lastModified(), vaultSavedAt)) return@forEach
                     val raw = org.json.JSONObject(file.readText(Charsets.UTF_8))
                     val auth = raw.optJSONObject("auth") ?: raw
                     val account = raw.optJSONObject("account") ?: raw
@@ -156,10 +180,12 @@ internal object WorkBuddyLocalVault {
                     val access = auth.optString("accessToken")
                     if (access.isBlank()) return@forEach
                     val previous = known[index]
+                    val candidateExpiry = auth.optLong("expiresAt")
+                    if (!canRecoverToken(previous.expiresAt, candidateExpiry)) return@forEach
                     val refreshed = previous.copy(
                         accessToken = access,
                         refreshToken = auth.optString("refreshToken").ifBlank { previous.refreshToken },
-                        expiresAt = auth.optLong("expiresAt").takeIf { it > 0 } ?: previous.expiresAt,
+                        expiresAt = candidateExpiry.takeIf { it > 0 } ?: previous.expiresAt,
                         domain = auth.optString("domain").ifBlank { previous.domain },
                     )
                     if (refreshed != previous) {
