@@ -114,6 +114,19 @@ jobs:
           path: eta-workspace-ipc-probe-arm64.zip
           retention-days: 14
 
+      - name: Verify portable AI backend module with Java 17 host ABI smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :ai-runtime-api:jar
+          mkdir -p "$RUNNER_TEMP/ai-api-test"
+          javac --release 17 -cp ai-runtime-api/build/classes/java/main \
+            -d "$RUNNER_TEMP/ai-api-test" \
+            ai-runtime-api/src/test/java/io/github/mangi/ai/runtime/AiBackendHostSmoke.java
+          java -ea -cp "ai-runtime-api/build/classes/java/main:$RUNNER_TEMP/ai-api-test" \
+            io.github.mangi.ai.runtime.AiBackendHostSmoke
+          jar tf ai-runtime-api/build/libs/ai-runtime-api.jar | grep -q 'io/github/mangi/ai/runtime/AiBackend.class'
+
       - name: Verify whole-app UI and agent integration
         shell: bash
         run: |
