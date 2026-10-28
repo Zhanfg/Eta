@@ -1,6 +1,6 @@
 # ETA Virtual Workspace: generic same-user, multi-app Android execution
 
-**Status as of 2026-10-28:** architecture + app-side scheduler + KSU/Magisk capability-preview source + preserved original LSPosed scopes. **Not yet a working trusted-display service or installable end-to-end product.** This is intentionally separate from WeChat, any other specific app, and WorkBuddy.
+**Status as of 2026-10-28:** app-side scheduler, preserved LSPosed scopes, real UID-authenticated AF_UNIX handshake source, Settings IPC probe and diagnostic-only KSU/Magisk build workflow. **Not yet a working trusted-display service or installable end-to-end product.** This is intentionally separate from WeChat, any other specific app, and WorkBuddy.
 
 ## Requirements / invariants
 
@@ -61,7 +61,7 @@ However, **the same-user package has shared process/global state**. If an alread
 - Observation: `getWindowsOnAllDisplays()`, window display IDs, target-specific screenshots with Android security restrictions; OCR/vision on permitted images as fallback, never claim DOM text is native OCR.
 - Android secure content is intentionally inaccessible. If a sensitive App blocks screenshot, capture does not work around it.
 
-## Versioned local IPC (future; not implemented)
+## Versioned local IPC (capability handshake implemented; display-control protocol future)
 
 Commands must be typed (never raw shell or raw `Intent` from model text):
 
@@ -75,7 +75,7 @@ CHECK_FOREGROUND() -> current app ownership
 CLOSE_DISPLAY(lease) -> released
 ```
 
-The bridge checks peer UID using kernel SO_PEERCRED, checks ETA's installed package/signature, rate limits requests, never accepts a generic command string, never binds TCP/ADB, and zeroizes per-session bearer tokens. ETA checks the bridge's version and executable hash. No action proceeds without a live lease. Use tightly scoped permission gating and the existing Android access-control checks.
+Implemented now: the native bridge checks client UID with kernel SO_PEERCRED and implements only HELLO 1, PING and CAPS. ETA checks that the server UID is Root and that the protocol and service identifier match. There is no raw command API, no TCP/ADB listener and no display lease. Not yet implemented: service code-signing/provenance pinning, per-session authentication tokens, multi-user UID mappings, rate limiting, actual display creation and display-specific input. Future app-control commands must require a validated lease and strict authorization.
 
 ## Workflows: 4 apps, same login, foreground stays usable
 
@@ -112,9 +112,9 @@ Power: adaptive one-display default, only expand pool after memory measurement. 
 - [x] Code: app-side scheduler and unit regression tests.
 - [x] Code: per-task merchant/recipient action-authorization policy and unit regression tests.
 - [x] Code: restored exact original nine LSPosed scope entries and existing Google/OEM assistant/launcher/system hook registrations; CI verifies no addition or removal.
-- [x] Source: diagnostic-only KSU/Magisk module skeleton.
+- [x] Source: KSU/Magisk module and UID-bound native capability bridge; host protocol smoke tests, Android ARM64 build and module ZIP packaging workflow added (CI execution not yet observed).
 - [ ] CI passing at current head (no claim until a fresh run is observed).
-- [ ] Authenticated on-device Root/shell bridge binary with signed build provenance.
+- [x] Implemented source: UID-authenticated local Root companion handshake + app-side client; no display capabilities advertised.\n- [ ] Successfully built and installed Android ARM64 Root bridge, signed build provenance, verified on a physical device.
 - [ ] Actual secondary display creation + verified third-party launch and same-user session.
 - [ ] Display-scoped input, screenshot, accessibility and IME without any Display 0 interaction.
 - [ ] Task DAG executor and durable checkpoint store integrated with ETA runtime.
