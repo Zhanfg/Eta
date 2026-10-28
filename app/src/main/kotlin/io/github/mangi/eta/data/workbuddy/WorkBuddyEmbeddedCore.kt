@@ -76,6 +76,33 @@ internal object WorkBuddyEmbeddedCore {
         proc != null && proc.isAlive && endpoint != null
     }
 
+    /**
+     * User-shareable, strictly redacted on-device diagnostic. No tokens, UIDs,
+     * filesystem paths, app IDs, account names or network requests.
+     */
+    fun diagnosticSummary(): String = synchronized(lock) {
+        val ctx = context
+        if (ctx == null) return@synchronized "ETA WorkBuddy: runtime not initialized"
+        val binary = File(ctx.applicationInfo.nativeLibraryDir, "libwbcore.so")
+        val accountState = runCatching {
+            "readable (${WorkBuddyLocalVault.summaries().size} accounts)"
+        }.getOrElse { error ->
+            "unreadable (${error.javaClass.simpleName})"
+        }
+        buildString {
+            appendLine("ETA WorkBuddy local diagnostics v1")
+            appendLine("Native core file present: ${binary.isFile}")
+            appendLine("Native core executable: ${binary.isFile && binary.canExecute()}")
+            appendLine("Native core size: ${if (binary.isFile) binary.length() else -1} bytes")
+            appendLine("Device ABI supported: ${android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }}")
+            appendLine("Local encrypted vault: $accountState")
+            appendLine("Go process running: ${running?.isAlive == true}")
+            appendLine("Health-confirmed endpoint: ${endpoint != null}")
+            appendLine("Active Agent requests: $activeAgentRequests")
+            appendLine("Network or model entitlement: not tested")
+        }
+    }
+
     private fun baseDir(context: Context): File = File(context.noBackupFilesDir, "workbuddy-native")
 
     private fun secret(): String {
