@@ -385,8 +385,8 @@ private fun SettingsPageContent(
 
                     EtaPreferenceDivider()
                     EtaArrowPreference(
-                        title = "检测微信后台独立显示支持",
-                        summary = "只检查系统虚拟显示和微信启动权限，不启动微信、不读取数据或操作屏幕",
+                        title = "检测通用后台显示能力",
+                        summary = "仅检查本机创建隔离显示的能力，不启动任何第三方应用",
                         startAction = {
                             EtaPreferenceIcon(
                                 icon = Icons.Rounded.Visibility,
@@ -397,13 +397,13 @@ private fun SettingsPageContent(
                             coroutineScope.launch {
                                 val result = withContext(Dispatchers.Default) {
                                     BackgroundDisplayCapabilityProbe.inspect(
-                                        context.applicationContext, "com.tencent.mm"
+                                        context.applicationContext, context.packageName
                                     )
                                 }
                                 val message = when (result.code) {
-                                    "LAUNCH_POLICY_ALLOWED_NOT_TESTED" -> "显示启动权限初检允许，但输入和实际微信运行仍需真机验证"
-                                    "THIRD_PARTY_LAUNCH_RESTRICTED" -> "系统禁止 ETA 在自有虚拟屏启动微信，需要另一条获授权的系统通路"
-                                    "APP_NOT_INSTALLED_OR_NO_LAUNCHER" -> "未找到微信或当前用户不可见其启动入口"
+                                    "LAUNCH_POLICY_ALLOWED_NOT_TESTED" -> "本应用的显示启动策略允许；跨应用启动与输入仍需设备端服务验证"
+                                    "THIRD_PARTY_LAUNCH_RESTRICTED" -> "普通应用显示受到启动限制；跨应用后台操作需要获授权的设备端服务"
+                                    "APP_NOT_INSTALLED_OR_NO_LAUNCHER" -> "检测应用无启动入口或不可见"
                                     "NO_SECONDARY_DISPLAY_FEATURE" -> "本系统不支持多显示 Activity"
                                     else -> "后台显示能力检测：${result.code}"
                                 }
