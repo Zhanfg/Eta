@@ -55,7 +55,6 @@ internal fun WorkBuddyLocalTab(
     val scope = rememberCoroutineScope()
     var selectedFile by remember(provider.id) { mutableStateOf<Uri?>(null) }
     var preview by remember(provider.id) { mutableStateOf<WorkBuddyAccountImport.Preview?>(null) }
-    var confirmImport by remember(provider.id) { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("直接导入电脑端的账号 JSON，不需要 API 地址、服务器或管理员密码。") }
     var accounts by remember { mutableStateOf<List<WorkBuddyLocalVault.AccountSummary>>(emptyList()) }
@@ -94,7 +93,7 @@ internal fun WorkBuddyLocalTab(
     }
 
     val chooseJson = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        preview = null; selectedFile = null; confirmImport = false
+        preview = null; selectedFile = null
         if (uri != null) work {
             val parsed = WorkBuddyAccountImport.preview(context, uri)
             selectedFile = uri
@@ -107,6 +106,12 @@ internal fun WorkBuddyLocalTab(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = PaddingValues(start = contentSidePadding, end = contentSidePadding),
     ) {
+        item(key = "workbuddy_import_feedback") {
+            EtaPreference(
+                title = if (busy) "WorkBuddy 正在处理…" else "WorkBuddy 操作结果",
+                summary = message,
+            )
+        }
         item {
             ProviderSection(title = "本地订阅 · 无需服务器") {
                 EtaPreference(
@@ -118,7 +123,9 @@ internal fun WorkBuddyLocalTab(
                         text = "选择 JSON / accounts.zip 订阅文件",
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !busy,
-                        onClick = { chooseJson.launch(arrayOf("application/json", "application/zip", "application/x-zip-compressed", "application/octet-stream", "text/plain")) },
+                        // Some Android cloud providers report ZIP as x-zip, binary, or */*;
+                        // content magic and JSON schema are verified after selection.
+                        onClick = { chooseJson.launch(arrayOf("*/*")) },
                     )
                     preview?.let { value ->
                         EtaPreference(
@@ -128,16 +135,15 @@ internal fun WorkBuddyLocalTab(
                         value.accounts.take(10).forEach { a ->
                             EtaPreference(title = a.nickname, summary = "${a.account} · ${a.realm}")
                         }
+                        // File selection already displayed an account preview;
+                        // one explicit confirmation is sufficient.
                         EtaTextButton(
-                            text = if (confirmImport) "再次点击确认导入到本机" else "确认本地导入",
+                            text = "确认导入 ${value.count} 个账号",
                             enabled = !busy && selectedFile != null,
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-                                if (!confirmImport) { confirmImport = true }
-                                else {
-                                    confirmImport = false
-                                    val uri = selectedFile
-                                    if (uri != null) work {
+                                val uri = selectedFile
+                                if (uri != null) work {
                                         // Stop the old Go pool BEFORE changing the vault, so
                                         // stale, in-flight refresh snapshots cannot overwrite an
                                         // explicitly imported newer desktop credential. A busy
@@ -158,7 +164,6 @@ internal fun WorkBuddyLocalTab(
                                         selectedFile = null
                                         preview = null
                                         message = "本机导入成功：新增 ${imported.added}、更新 ${imported.refreshed}，共保存 ${imported.total} 个账号。凭据已写入加密账号库。下一步可点「启动并验证原生后端」，真实凭据再点「重新同步模型」。"
-                                    }
                                 }
                             },
                         )
