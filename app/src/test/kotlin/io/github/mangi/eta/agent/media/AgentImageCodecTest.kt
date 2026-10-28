@@ -161,6 +161,30 @@ class AgentImageCodecTest {
     }
 
     @Test
+    fun pngFileToolPreservesExactPixelsForSmallTextAndDiagrams() {
+        val context = RuntimeEnvironment.getApplication()
+        val sourceFile = File(context.cacheDir, "tool-ocr-${System.nanoTime()}.png")
+        val bitmap = patternedBitmap(width = 960, height = 1_280)
+        val original = ByteArrayOutputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+            output.toByteArray()
+        }
+        bitmap.recycle()
+        sourceFile.writeBytes(original)
+        try {
+            val image = AgentImageCodec.fromToolFile(sourceFile, "tool_read_image")
+                ?: error("无法读取无损 PNG")
+            assertEquals("image/png", image.mimeType)
+            assertTrue(image.preserveOriginal)
+            assertEquals(960, image.width)
+            assertEquals(1_280, image.height)
+            assertArrayEquals(original, image.reference.decodeDataUrl())
+        } finally {
+            sourceFile.delete()
+        }
+    }
+
+    @Test
     fun fileToolImageUsesJpegAndKeepsDimensions() {
         val context = RuntimeEnvironment.getApplication()
         val sourceFile = File(context.cacheDir, "tool-image-${System.nanoTime()}.jpg")

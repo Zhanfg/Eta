@@ -6,6 +6,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import io.github.mangi.eta.data.model.AppearanceAccentColor
@@ -13,6 +16,7 @@ import io.github.mangi.eta.data.model.AppearancePaletteStyle
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.data.model.AppearanceThemeMode
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeColorSpec
 import top.yukonga.miuix.kmp.theme.ThemeController
@@ -40,19 +44,18 @@ fun AgentAppTheme(
         appearance.themeMode == AppearanceThemeMode.DARK -> ColorSchemeMode.MonetDark
         else -> ColorSchemeMode.MonetSystem
     }
-    val systemSeedColor = if (
+    // Miuix Monet with null keyColor reads the actual wallpaper palette. Feeding its
+    // primary role back as a fresh seed would re-harmonize an already derived color.
+    // Observe the platform color as a remember key so live wallpaper changes refresh.
+    val wallpaperRevision = if (
         appearance.monetEnabled && appearance.accentColor == AppearanceAccentColor.SYSTEM
-    ) {
-        platformDynamicColors(isDark).primary
-    } else {
-        null
-    }
+    ) platformDynamicColors(isDark).primary else null
     val keyColor = when {
         !appearance.monetEnabled -> null
-        appearance.accentColor == AppearanceAccentColor.SYSTEM -> systemSeedColor
+        appearance.accentColor == AppearanceAccentColor.SYSTEM -> null
         else -> appearance.accentColor.seedColor()
     }
-    val controller = remember(appearance, colorSchemeMode, keyColor, isDark) {
+    val controller = remember(appearance, colorSchemeMode, keyColor, isDark, wallpaperRevision) {
         ThemeController(
             colorSchemeMode = colorSchemeMode,
             keyColor = keyColor,
@@ -63,14 +66,10 @@ fun AgentAppTheme(
     }
     val colors = controller.currentColors()
     val themedColors = remember(colors, isDark, appearance.monetEnabled, appearance.pureBlackEnabled) {
-        if (appearance.monetEnabled && appearance.pureBlackEnabled && isDark) {
-            colors.copy(
-                background = Color.Black,
-                surface = Color.Black,
-            )
-        } else {
-            colors
-        }
+        val base = if (appearance.monetEnabled && appearance.pureBlackEnabled && isDark) {
+            colors.copy(background = Color.Black, surface = Color.Black)
+        } else colors
+        base.readableTextRoles()
     }
 
     LaunchedEffect(isDark) { onResolvedDarkModeChange(isDark) }

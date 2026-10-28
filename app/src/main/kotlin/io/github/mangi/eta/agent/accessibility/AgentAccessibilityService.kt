@@ -174,6 +174,18 @@ class AgentAccessibilityService : AccessibilityService() {
         }
     }
 
+    /**
+     * Read a secondary display without accessing the physical foreground's
+     * rootInActiveWindow. This is observation only; no display lease or input
+     * authorization is granted from this API.
+     */
+    internal fun observeWorkspaceDisplay(
+        displayId: Int,
+        maxWindows: Int = 8,
+        maxNodesPerWindow: Int = 80,
+    ): AgentWorkspaceDisplayObserver.Snapshot =
+        AgentWorkspaceDisplayObserver.observe(this, displayId, maxWindows, maxNodesPerWindow)
+
     /** 临时查询不发布任何全局节点状态，适用于 wait_for_text。 */
     fun queryNodes(maxNodes: Int): List<UiNode> =
         captureNodeSnapshot(maxNodes)?.nodes.orEmpty()

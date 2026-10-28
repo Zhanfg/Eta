@@ -62,6 +62,8 @@ import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.accessibility.AccessibilityProtectionClient
 import io.github.mangi.eta.agent.accessibility.AgentAccessibilityService
 import io.github.mangi.eta.config.PowerAssistantTarget
+import io.github.mangi.eta.agent.runtime.BackgroundDisplayCapabilityProbe
+import io.github.mangi.eta.agent.runtime.AgentWorkspaceBridgeClient
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
@@ -80,6 +82,7 @@ import io.github.mangi.eta.ui.components.EtaPreferenceDivider
 import io.github.mangi.eta.ui.components.EtaPreferenceGroup
 import io.github.mangi.eta.ui.components.EtaPreferenceGroupTitle
 import io.github.mangi.eta.ui.components.EtaPreferenceIcon
+import io.github.mangi.eta.ui.components.EtaPreferenceLucideIcon
 import io.github.mangi.eta.ui.components.EtaSwitchPreference
 import io.github.mangi.eta.ui.components.EtaWindowDialog
 import io.github.mangi.eta.ui.components.LanguagePreference
@@ -260,8 +263,7 @@ private fun SettingsPageContent(
                         title = stringResource(R.string.ui_model_provider_e8c7f5),
                         summary = providerSummary,
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Cloud,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_cloud,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },
@@ -297,8 +299,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.ui_memory_b55ff5),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.AutoMirrored.Rounded.MenuBook,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_book_open,
                                 tint = EtaPreferenceColors.Orange,
                             )
                         },
@@ -309,8 +310,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.route_skills),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.ImportContacts,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_book_open,
                                 tint = EtaPreferenceColors.Green,
                             )
                         },
@@ -321,8 +321,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.route_mcp_servers),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.AccountTree,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_network,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },
@@ -333,8 +332,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = "角色",
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.SportsBar,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_user_round,
                                 tint = EtaPreferenceColors.Orange,
                             )
                         },
@@ -349,7 +347,7 @@ private fun SettingsPageContent(
                 EtaPreferenceGroup {
                     EtaArrowPreference(
                         title = stringResource(R.string.settings_tools_list),
-                        startAction = { EtaPreferenceIcon(Icons.Rounded.Dashboard, tint = EtaPreferenceColors.Green) },
+                        startAction = { EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_layout_dashboard, tint = EtaPreferenceColors.Green) },
                         onClick = { onNavigate(AppRoute.Tools) },
                     )
 
@@ -373,6 +371,75 @@ private fun SettingsPageContent(
                             )
                         },
                         onClick = { onNavigate(AppRoute.WebToolsSettings) },
+                    )
+
+                    EtaPreferenceDivider()
+                    SwitchPref(
+                        context = context,
+                        prefs = agentPrefs,
+                        title = "严格后台模式（不操作当前手机屏幕）",
+                        summary = "允许独立网页、文件和模型任务；点击、启动应用及其他前台操作将明确阻止。第三方 App 虚拟屏仍需通过兼容性验证。",
+                        key = Prefs.Keys.AGENT_BACKGROUND_ONLY,
+                        icon = Icons.Rounded.Smartphone,
+                        iconTint = EtaPreferenceColors.Blue,
+                    )
+
+                    EtaPreferenceDivider()
+                    EtaArrowPreference(
+                        title = "检测通用后台显示能力",
+                        summary = "仅检查本机创建隔离显示的能力，不启动任何第三方应用",
+                        startAction = {
+                            EtaPreferenceIcon(
+                                icon = Icons.Rounded.Visibility,
+                                tint = EtaPreferenceColors.Blue,
+                            )
+                        },
+                        onClick = {
+                            coroutineScope.launch {
+                                val result = withContext(Dispatchers.Default) {
+                                    BackgroundDisplayCapabilityProbe.inspect(
+                                        context.applicationContext, context.packageName
+                                    )
+                                }
+                                val message = when (result.code) {
+                                    "LAUNCH_POLICY_ALLOWED_NOT_TESTED" -> "本应用的显示启动策略允许；跨应用启动与输入仍需设备端服务验证"
+                                    "THIRD_PARTY_LAUNCH_RESTRICTED" -> "普通应用显示受到启动限制；跨应用后台操作需要获授权的设备端服务"
+                                    "APP_NOT_INSTALLED_OR_NO_LAUNCHER" -> "检测应用无启动入口或不可见"
+                                    "NO_SECONDARY_DISPLAY_FEATURE" -> "本系统不支持多显示 Activity"
+                                    else -> "后台显示能力检测：${result.code}"
+                                }
+                                Toast.makeText(
+                                    context.applicationContext, message, Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        },
+                    )
+
+                    EtaPreferenceDivider()
+                    EtaArrowPreference(
+                        title = "检查 KSU/Magisk 工作空间服务",
+                        summary = "检查本机权限隔离、协议握手和显示后端状态；不会操控应用",
+                        startAction = {
+                            EtaPreferenceIcon(
+                                icon = Icons.Rounded.Terminal,
+                                tint = EtaPreferenceColors.Blue,
+                            )
+                        },
+                        onClick = {
+                            coroutineScope.launch {
+                                val status = withContext(Dispatchers.IO) {
+                                    AgentWorkspaceBridgeClient.inspect()
+                                }
+                                val summary = when (status.code) {
+                                    "BRIDGE_PROBE_ONLY" -> "模块服务已连接，版本握手成功；虚拟显示后端尚未实现"
+                                    "BRIDGE_CAPABILITY_REPORTED_NOT_VERIFIED" -> "服务报告显示能力，尚需有效显示租约与真机验证"
+                                    "BRIDGE_PEER_UNTRUSTED" -> "本机服务身份校验失败；已拒绝连接"
+                                    "BRIDGE_UNAVAILABLE" -> "未连接到本机模块服务，请检查 KSU/Magisk 和模块状态"
+                                    else -> "后台服务检查：${status.code}"
+                                }
+                                Toast.makeText(context.applicationContext, summary, Toast.LENGTH_LONG).show()
+                            }
+                        },
                     )
 
                     EtaPreferenceDivider()
@@ -433,7 +500,7 @@ private fun SettingsPageContent(
                 EtaPreferenceGroup {
                     EtaArrowPreference(
                         title = stringResource(R.string.capability_enhancements),
-                        startAction = { EtaPreferenceIcon(Icons.Rounded.Security, tint = EtaPreferenceColors.Blue) },
+                        startAction = { EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_shield_check, tint = EtaPreferenceColors.Blue) },
                         onClick = { onNavigate(AppRoute.SystemEnhance) },
                     )
                 }
@@ -446,8 +513,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.ui_eta_system_assistant_003e9b),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.SupportAgent,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_brain,
                                 tint = EtaPreferenceColors.Green,
                             )
                         },
@@ -628,8 +694,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.appearance_title),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Palette,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_palette,
                                 tint = EtaPreferenceColors.Orange,
                             )
                         },
@@ -666,8 +731,7 @@ private fun SettingsPageContent(
                     EtaArrowPreference(
                         title = stringResource(R.string.ui_floating_window_permissions_076b77),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Layers,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_layers,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },
@@ -826,8 +890,7 @@ private fun SettingsPageContent(
                         title = stringResource(R.string.ui_about_github_star_title),
                         summary = stringResource(R.string.ui_about_github_star_hint),
                         startAction = {
-                            EtaPreferenceIcon(
-                                icon = Icons.Rounded.Code,
+                            EtaPreferenceLucideIcon(drawableRes = R.drawable.ic_eta_lucide_terminal,
                                 tint = EtaPreferenceColors.Blue,
                             )
                         },

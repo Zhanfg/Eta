@@ -99,7 +99,7 @@ android {
         }
         jniLibs {
             useLegacyPackaging = true
-            keepDebugSymbols += setOf("**/libproot_exec.so", "**/libproot_loader.so", "**/libeta_pty.so")
+            keepDebugSymbols += setOf("**/libproot_exec.so", "**/libproot_loader.so", "**/libeta_pty.so", "**/libwbcore.so")
         }
         resources {
             // 合并 Xposed 模块声明，避免 release 裁剪后模块入口失效
@@ -148,6 +148,7 @@ androidComponents {
 }
 
 dependencies {
+    implementation(project(":ai-runtime-api"))
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     implementation(libs.jsoup)
     implementation(libs.commons.compress)

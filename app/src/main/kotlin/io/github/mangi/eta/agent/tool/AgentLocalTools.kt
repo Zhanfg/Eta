@@ -74,6 +74,9 @@ internal class AgentLocalTools(
     private val terminalToolsEnabled: () -> Boolean = {
         Prefs.isEnabled(Prefs.Keys.AGENT_TERMINAL_TOOLS)
     },
+    private val backgroundOnlyEnabled: () -> Boolean = {
+        Prefs.isEnabled(Prefs.Keys.AGENT_BACKGROUND_ONLY)
+    },
     private val deviceDirectToolsEnabled: () -> Boolean = {
         Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS)
     },
@@ -183,6 +186,22 @@ internal class AgentLocalTools(
         runCatching {
             if (closed.get()) throw AgentRunCancelledException()
             val args = JSONObject(toolCall.argumentsJson.ifBlank { "{}" })
+            // Enforced before accessibility/foreground preparation. Strict mode
+            // must not dismiss the assistant, inject gestures, launch apps or
+            // let an arbitrary Root shell command bypass screen ownership.
+            if (backgroundOnlyEnabled() &&
+                io.github.mangi.eta.agent.runtime.AgentExecutionSurfacePolicy.requiresForegroundSurface(toolCall.name)
+            ) {
+                return@runCatching textResult(
+                    JSONObject()
+                        .put("ok", false)
+                        .put("code", "BACKGROUND_FOREGROUND_REQUIRED")
+                        .put("mode", "BACKGROUND_ONLY")
+                        .put("tool", toolCall.name)
+                        .put("message", "严格后台模式下此操作可能占用手机前台，已阻止。请使用离屏浏览器、独立文件工具，或在设置中明确关闭严格后台模式。")
+                        .toString()
+                )
+            }
             if (AgentToolRequirements.find(toolCall.name) != null &&
                 AgentToolRequirements.rootDenied(toolCall.name, args, rootAvailable())
             ) {
@@ -502,9 +521,25 @@ internal class AgentLocalTools(
             logger.debug { "Agent local tool after-action observation failed: type=${throwable.javaClass.simpleName}" }
             return textResult(raw)
         }
-        val elements = after.elementObservation ?: return textResult(raw)
-        // 新快照取代动作前的快照：旧 index 在界面变化后本就不可靠，继续保留只会让模型误用。
-        publishedObservation.set(publishedObservation.get().copy(elements = elements))
+        val elements = after.elementObservation
+        if (elements == null) {
+            // A click may have replaced the window with a canvas, secure screen
+            // or an inaccessible view. Never retain the pre-action node indices.
+            publishedObservation.set(publishedObservation.get().copy(
+                elements = null,
+                coordinateSpace = null,
+            ))
+            result.put("after", JSONObject()
+                .put("observation_available", false)
+                .put("requires_new_observation", true))
+            return textResult(result.toString())
+        }
+        // A node-only observation has no screenshot: invalidate the old
+        // screenshot coordinate mapping, especially after rotation/resizing.
+        publishedObservation.set(publishedObservation.get().copy(
+            elements = elements,
+            coordinateSpace = after.coordinateSpace,
+        ))
         result.put("after", AgentAfterActionSummary.build(before, elements))
         return textResult(result.toString())
     }

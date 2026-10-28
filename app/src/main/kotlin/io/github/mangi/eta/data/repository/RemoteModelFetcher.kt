@@ -16,6 +16,8 @@ import io.github.mangi.eta.data.model.Model
 import io.github.mangi.eta.data.model.ModelReasoningCapabilities
 import io.github.mangi.eta.data.model.ModelSource
 import io.github.mangi.eta.data.model.ProviderSetting
+import io.github.mangi.eta.data.model.ProviderSourceTypes
+import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalModels
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.provider.OfficialModelCatalog
 import io.github.mangi.eta.data.provider.ProviderConnectionProfile
@@ -53,6 +55,11 @@ internal object RemoteModelFetcher {
         client: OkHttpClient,
         credentials: Credentials,
     ): Result<RemoteModelCatalog> = withContext(Dispatchers.IO) {
+        if (provider.sourceType == ProviderSourceTypes.WORKBUDDY_LOCAL) {
+            return@withContext runCatching {
+                RemoteModelCatalog(WorkBuddyLocalModels.fetch(), provider, null)
+            }
+        }
         suspendCancellableCoroutine { continuation ->
             val controller = AgentRunController()
             continuation.invokeOnCancellation { controller.cancel() }

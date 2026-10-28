@@ -1,0 +1,6 @@
+id=eta_workspace
+name=ETA Workspace Companion (Display Feasibility)
+version=0.2.0-alpha02
+versionCode=20002
+author=ETA contributors
+description=KSU/Magisk module with authenticated local IPC and opt-in blank trusted-display feasibility check; no app automation yet

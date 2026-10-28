@@ -27,7 +27,9 @@ import io.github.mangi.eta.data.model.AnthropicProviderSetting
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderAuthModes
 import io.github.mangi.eta.data.model.ProviderSetting
+import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.ui.components.EtaPreferenceDivider
+import io.github.mangi.eta.ui.components.EtaPreference
 import io.github.mangi.eta.ui.components.EtaSwitchPreference
 import io.github.mangi.eta.ui.components.EtaWindowSpinnerPreference
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -63,6 +65,13 @@ internal fun ProviderConnectionFields(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+    if (provider.sourceType == ProviderSourceTypes.WORKBUDDY_LOCAL) {
+        EtaPreference(
+            title = "本地账号模式，无需 API Key",
+            summary = "不要输入服务端 API 地址或密钥。请切到「本地账号 / WorkBuddy」标签页，将电脑端导出的 CodeBuddy JSON 导入手机。ETA 会直接连接腾讯 HTTPS 模型接口。",
+        )
+        return
     }
     if (accountMode != null) {
         EtaPreferenceDivider(hasLeading = false)
@@ -133,15 +142,29 @@ internal fun ProviderConnectionFields(
             EtaPreferenceDivider(hasLeading = false)
             EtaWindowSpinnerPreference(
                 title = stringResource(R.string.ui_endpoint_mode_3c8546),
-                items = listOf(DropdownItem(text = "Chat Completions API"), DropdownItem(text = "Responses API")),
-                selectedIndex = if (draft.endpointMode == OpenAiEndpointMode.RESPONSES) 1 else 0,
+                items = listOf(DropdownItem(text = "Chat Completions API"), DropdownItem(text = "Responses API")) +
+                    if (provider.sourceType == io.github.mangi.eta.data.model.ProviderSourceTypes.WORKBUDDY)
+                        listOf(DropdownItem(text = "Anthropic Messages API")) else emptyList(),
+                selectedIndex = when (draft.endpointMode) {
+                    OpenAiEndpointMode.RESPONSES -> 1
+                    OpenAiEndpointMode.MESSAGES ->
+                        if (provider.sourceType == io.github.mangi.eta.data.model.ProviderSourceTypes.WORKBUDDY) 2 else 0
+                    else -> 0
+                },
                 enabled = enabled,
-                summary = context.getString(
+                summary = if (draft.endpointMode == OpenAiEndpointMode.MESSAGES) {
+                    "适配 Claude Messages / tool_use；实际能力取决于网关与上游"
+                } else context.getString(
                     if (draft.endpointMode == OpenAiEndpointMode.RESPONSES) R.string.page_using_typed_items_with_semantic_streaming_events_f9c906
                     else R.string.page_use_standard_chat_completions_ee4b1a,
                 ),
                 onSelectedIndexChange = { index ->
-                    onDraftChange(draft.copy(endpointMode = if (index == 1) OpenAiEndpointMode.RESPONSES else OpenAiEndpointMode.CHAT_COMPLETIONS))
+                    onDraftChange(draft.copy(endpointMode = when (index) {
+                        1 -> OpenAiEndpointMode.RESPONSES
+                        2 -> if (provider.sourceType == io.github.mangi.eta.data.model.ProviderSourceTypes.WORKBUDDY)
+                            OpenAiEndpointMode.MESSAGES else OpenAiEndpointMode.CHAT_COMPLETIONS
+                        else -> OpenAiEndpointMode.CHAT_COMPLETIONS
+                    }))
                 },
             )
         }

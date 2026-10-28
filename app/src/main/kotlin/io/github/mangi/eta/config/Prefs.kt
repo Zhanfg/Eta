@@ -39,6 +39,7 @@ internal object Prefs {
         const val AGENT_REQUIRE_PREFIX = "agent_require_prefix"
         const val AGENT_TERMINAL_TOOLS = "agent_terminal_tools"
         const val AGENT_BROWSER_TOOLS = "agent_browser_tools"
+        const val AGENT_BACKGROUND_ONLY = "agent_background_only"
         const val AGENT_DEVICE_DIRECT_TOOLS = "agent_device_direct_tools"
         const val AGENT_DEVICE_SENSITIVE_READ_TOOLS = "agent_device_sensitive_read_tools"
         const val AGENT_DEVICE_SENSITIVE_ACTION_TOOLS = "agent_device_sensitive_action_tools"
@@ -59,6 +60,7 @@ internal object Prefs {
             AGENT_REQUIRE_PREFIX to false,
             AGENT_TERMINAL_TOOLS to true,
             AGENT_BROWSER_TOOLS to true,
+            AGENT_BACKGROUND_ONLY to false,
             AGENT_DEVICE_DIRECT_TOOLS to true,
             AGENT_DEVICE_SENSITIVE_READ_TOOLS to true,
             AGENT_DEVICE_SENSITIVE_ACTION_TOOLS to true,
@@ -70,6 +72,7 @@ internal object Prefs {
         val LOCAL_AGENT_KEYS: Set<String> = setOf(
             AGENT_TERMINAL_TOOLS,
             AGENT_BROWSER_TOOLS,
+            AGENT_BACKGROUND_ONLY,
             AGENT_DEVICE_DIRECT_TOOLS,
             AGENT_DEVICE_SENSITIVE_READ_TOOLS,
             AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,

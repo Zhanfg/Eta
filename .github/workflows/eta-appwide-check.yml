@@ -1,0 +1,151 @@
+name: ETA App-wide Design / Agent Regression
+
+on:
+  push:
+    branches:
+      - feature/eta-appwide-kelivo-practices
+      - feature/eta-automation-vision-hardening
+      - feature/eta-background-workspace
+      - feature/eta-virtual-workspace-module
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eta-appwide-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kotlin-ui-and-agent:
+    name: Lint / Unit Tests / Debug Kotlin Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout complete ETA branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Verify original ETA LSPosed scope remains unchanged
+        shell: bash
+        run: bash scripts/verify_eta_original_lsposed_scopes.sh
+
+      - name: Validate KSU-Magisk module preview scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in modules/eta-workspace/*.sh modules/eta-workspace/bin/*.sh; do
+            sh -n "$script"
+          done
+          grep -qx 'id=eta_workspace' modules/eta-workspace/module.prop
+          test ! -e modules/eta-workspace/sepolicy.rule
+          test ! -d modules/eta-workspace/system
+
+      - name: Compile host bridge and run peer-credential smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcc -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+            modules/eta-workspace/native/eta_workspace_bridge.c \
+            -o /tmp/eta-workspace-bridge-host
+          sudo python3 scripts/test_eta_workspace_bridge_native.py \
+            /tmp/eta-workspace-bridge-host
+
+      - name: Configure standard ETA Android toolchain
+        uses: ./.github/actions/setup-build
+
+      - name: Compile Android ARM64 workspace companion and package KSU/Magisk diagnostic module
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK_VERSION="$(sed -nE 's/^ndk = "([^"]+)"/\1/p' gradle/libs.versions.toml | head -n1)"
+          test -n "$NDK_VERSION"
+          sdkmanager --channel=3 "ndk;$NDK_VERSION"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME}}"
+          CC="$SDK_ROOT/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang"
+          test -x "$CC"
+          BUILD_DIR="$RUNNER_TEMP/eta-workspace-module-package"
+          rm -rf "$BUILD_DIR"
+          mkdir -p "$BUILD_DIR"
+          cp -a modules/eta-workspace/. "$BUILD_DIR/"
+          "$CC" -std=c11 -O2 -Wall -Wextra -Werror \
+            "$BUILD_DIR/native/eta_workspace_bridge.c" \
+            -o "$BUILD_DIR/bin/eta-workspace-bridge"
+          file "$BUILD_DIR/bin/eta-workspace-bridge" | grep -qi "aarch64"
+          chmod 0755 "$BUILD_DIR/bin/eta-workspace-bridge"
+
+          # Android framework display-owner *diagnostic*, not a task executor.
+          sdkmanager --channel=3 "build-tools;36.0.0"
+          # Android 37 SDK platform directories may be android-37 or
+          # android-37.0 depending on the platform package revision.
+          if [ -f "$SDK_ROOT/platforms/android-37.0/android.jar" ]; then
+            ANDROID_JAR="$SDK_ROOT/platforms/android-37.0/android.jar"
+          else
+            ANDROID_JAR="$SDK_ROOT/platforms/android-37/android.jar"
+          fi
+          BUILD_TOOLS="$SDK_ROOT/build-tools/36.0.0"
+          test -f "$ANDROID_JAR"
+          test -x "$BUILD_TOOLS/d8"
+          mkdir -p "$RUNNER_TEMP/eta-display-classes" "$RUNNER_TEMP/eta-display-dex"
+          javac --release 17 -cp "$ANDROID_JAR" \
+            -d "$RUNNER_TEMP/eta-display-classes" \
+            modules/eta-workspace/java/io/github/mangi/eta/workspace/WorkspaceDisplayProbe.java
+          jar --create --file "$RUNNER_TEMP/eta-display-classes.jar" \
+            -C "$RUNNER_TEMP/eta-display-classes" .
+          "$BUILD_TOOLS/d8" --min-api 33 --lib "$ANDROID_JAR" \
+            --output "$RUNNER_TEMP/eta-display-dex" \
+            "$RUNNER_TEMP/eta-display-classes.jar"
+          jar --create --file "$BUILD_DIR/bin/eta-display-probe.jar" \
+            -C "$RUNNER_TEMP/eta-display-dex" classes.dex
+          unzip -l "$BUILD_DIR/bin/eta-display-probe.jar" | grep -q classes.dex
+
+          # Source is not needed on phone; binary + dex are the only diagnostics.
+          rm -rf "$BUILD_DIR/native" "$BUILD_DIR/java"
+          cd "$BUILD_DIR"
+          zip -q -r "$GITHUB_WORKSPACE/eta-workspace-ipc-probe-arm64.zip" .
+          unzip -l "$GITHUB_WORKSPACE/eta-workspace-ipc-probe-arm64.zip" |
+            grep -q "bin/eta-workspace-bridge"
+
+      - name: Publish diagnostic module archive (not a functional display backend)
+        uses: actions/upload-artifact@v4
+        with:
+          name: eta-workspace-ipc-probe-arm64
+          path: eta-workspace-ipc-probe-arm64.zip
+          retention-days: 14
+
+      - name: Verify portable AI backend module with Java 17 host ABI smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :ai-runtime-api:jar
+          mkdir -p "$RUNNER_TEMP/ai-api-test"
+          javac --release 17 -cp ai-runtime-api/build/classes/java/main \
+            -d "$RUNNER_TEMP/ai-api-test" \
+            ai-runtime-api/src/test/java/io/github/mangi/ai/runtime/AiBackendHostSmoke.java
+          java -ea -cp "ai-runtime-api/build/classes/java/main:$RUNNER_TEMP/ai-api-test" \
+            io.github.mangi.ai.runtime.AiBackendHostSmoke
+          jar tf ai-runtime-api/build/libs/ai-runtime-api.jar | grep -q 'io/github/mangi/ai/runtime/AiBackend.class'
+
+      - name: Verify whole-app UI and agent integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache --continue \
+            :app:lintDebug \
+            :app:testDebugUnitTest \
+            :app:assembleDebug
+
+      - name: Upload diagnostic reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eta-appwide-regression-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+# This validates the app-wide Kotlin baseline, NOT a deployable WorkBuddy APK.
+# The separate Go ARM64 integration workflow is mandatory for local WB.

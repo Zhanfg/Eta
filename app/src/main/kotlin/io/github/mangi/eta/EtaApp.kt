@@ -18,6 +18,8 @@ import io.github.mangi.eta.data.repository.AppearanceSettingsRepository
 import io.github.mangi.eta.data.repository.McpServerRepository
 import io.github.mangi.eta.data.repository.LinuxEnvironmentSettingsRepository
 import io.github.mangi.eta.data.repository.ProviderRepository
+import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
+import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
 import io.github.mangi.eta.ui.app.PredictiveBackController
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
@@ -47,6 +49,8 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
     override fun onCreate() {
         super.onCreate()
         Prefs.initLocal(this)
+        WorkBuddyLocalVault.init(this)
+        WorkBuddyEmbeddedCore.init(this)
         if (!AppProcessPolicy.shouldInitializeFullRuntime(Application.getProcessName(), packageName)) {
             return
         }
@@ -59,6 +63,16 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         }
         PredictiveBackController.apply(applicationInfo, predictiveBackEnabled)
         AgentMemoryRepository.init(this)
+        // Reconcile any Go-auth snapshots left by Android process death without
+        // blocking the UI thread. Failures leave private files intact for recovery.
+        applicationScope.launch {
+            runCatching { WorkBuddyEmbeddedCore.recoverAfterUnexpectedExit() }
+                .onFailure { error ->
+                    AndroidAgentLogger.warn(
+                        "WorkBuddy account recovery unavailable: type=${error.safeLogType()}"
+                    )
+                }
+        }
         ProviderRepository.init(this)
         McpServerRepository.init(this)
         XposedServiceHelper.registerListener(this)
