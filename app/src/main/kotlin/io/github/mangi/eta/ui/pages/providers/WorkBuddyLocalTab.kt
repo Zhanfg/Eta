@@ -187,6 +187,9 @@ internal fun WorkBuddyLocalTab(
                                         coreSummary = null
                                         lastProbe = null
                                         availableModels = null
+                                        modelChoices = emptyList()
+                                        // Any prior model catalog is stale after
+                                        // replacing the local account identities.
                                         message = if (WorkBuddyEmbeddedCore.isBundled()) {
                                             "本地导入成功：新增 ${imported.added}、更新 ${imported.refreshed}，共 ${imported.total} 个账号。未进行任何网络认证；请先点击「启动并验证原生后端」，再主动同步模型。"
                                         } else {
