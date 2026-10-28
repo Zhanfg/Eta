@@ -49,7 +49,7 @@ python3 - "$APK" <<'PY'
 import sys, zipfile, struct
 with zipfile.ZipFile(sys.argv[1]) as apk:
     data=apk.read("lib/arm64-v8a/libwbcore.so")
-    assert data[:4] == b"\\x7fELF" and data[4] == 2
+    assert data[:4] == bytes([0x7f, 0x45, 0x4c, 0x46]) and data[4] == 2
     assert struct.unpack_from("<H", data, 18)[0] == 183
     assert b"/system/bin/linker64" in data
     print("PASS: APK includes executable Android ARM64 Go core")
