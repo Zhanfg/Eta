@@ -63,6 +63,7 @@ import io.github.mangi.eta.agent.accessibility.AccessibilityProtectionClient
 import io.github.mangi.eta.agent.accessibility.AgentAccessibilityService
 import io.github.mangi.eta.config.PowerAssistantTarget
 import io.github.mangi.eta.agent.runtime.BackgroundDisplayCapabilityProbe
+import io.github.mangi.eta.agent.runtime.AgentWorkspaceBridgeClient
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
@@ -410,6 +411,33 @@ private fun SettingsPageContent(
                                 Toast.makeText(
                                     context.applicationContext, message, Toast.LENGTH_LONG
                                 ).show()
+                            }
+                        },
+                    )
+
+                    EtaPreferenceDivider()
+                    EtaArrowPreference(
+                        title = "检查 KSU/Magisk 工作空间服务",
+                        summary = "检查本机权限隔离、协议握手和显示后端状态；不会操控应用",
+                        startAction = {
+                            EtaPreferenceIcon(
+                                icon = Icons.Rounded.Terminal,
+                                tint = EtaPreferenceColors.Blue,
+                            )
+                        },
+                        onClick = {
+                            coroutineScope.launch {
+                                val status = withContext(Dispatchers.IO) {
+                                    AgentWorkspaceBridgeClient.inspect()
+                                }
+                                val summary = when (status.code) {
+                                    "BRIDGE_PROBE_ONLY" -> "模块服务已连接，版本握手成功；虚拟显示后端尚未实现"
+                                    "BRIDGE_CAPABILITY_REPORTED_NOT_VERIFIED" -> "服务报告显示能力，尚需有效显示租约与真机验证"
+                                    "BRIDGE_PEER_UNTRUSTED" -> "本机服务身份校验失败；已拒绝连接"
+                                    "BRIDGE_UNAVAILABLE" -> "未连接到本机模块服务，请检查 KSU/Magisk 和模块状态"
+                                    else -> "后台服务检查：${status.code}"
+                                }
+                                Toast.makeText(context.applicationContext, summary, Toast.LENGTH_LONG).show()
                             }
                         },
                     )
