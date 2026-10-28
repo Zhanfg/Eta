@@ -138,7 +138,7 @@ internal fun WorkBuddyLocalTab(
             ProviderSection(title = "本地订阅 · 无需服务器") {
                 EtaPreference(
                     title = "从电脑导入 WorkBuddy 订阅",
-                    summary = "电脑导出的 WorkBuddy JSON 或 accounts.zip，可直接在手机导入。无需解压、远程 Manager、WebUI 或 API Key。",
+                    summary = "支持 JSON 或 accounts.zip；本地解析与加密保存不触发上游认证。后端启动、模型同步及真实调用独立验证。",
                 )
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     EtaTextButton(
@@ -180,17 +180,20 @@ internal fun WorkBuddyLocalTab(
                                         accounts = withContext(Dispatchers.IO) { WorkBuddyLocalVault.summaries() }
                                         selectedFile = null
                                         preview = null
-                                        message = "本地导入：新增 ${imported.added}、更新凭据 ${imported.refreshed}、共 ${imported.total} 个账号。正在同步可用模型。"
-                                        runCatching {
-                                            val models = WorkBuddyLocalModels.fetch()
-                                            ModelRepository.syncRemoteModels(provider.id, models, models.mapTo(HashSet()) { it.modelId })
-                                            modelChoices = ProviderRepository.providerById(provider.id)?.models.orEmpty()
-                                            RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
-                                            availableModels = models.size
-                                        }.onFailure {
-                                            message = "账号已安全保存，但模型列表未同步：${it.javaClass.simpleName}。请检查网络后点击「重新同步模型」。"
-                                        }.onSuccess {
-                                            message = "导入完成：本机已有 ${imported.total} 个账号，发现 ${availableModels} 个模型。请到「模型」页启用并选择模型。"
+                                        // Import is deliberately offline. In particular a
+                                        // synthetic/fake account archive must never cause an
+                                        // automatic upstream login, token refresh, model query
+                                        // or credit-consuming call just because it parsed.
+                                        coreSummary = null
+                                        lastProbe = null
+                                        availableModels = null
+                                        modelChoices = emptyList()
+                                        // Any prior model catalog is stale after
+                                        // replacing the local account identities.
+                                        message = if (WorkBuddyEmbeddedCore.isBundled()) {
+                                            "本地导入成功：新增 ${imported.added}、更新 ${imported.refreshed}，共 ${imported.total} 个账号。未进行任何网络认证；请先点击「启动并验证原生后端」，再主动同步模型。"
+                                        } else {
+                                            "本地导入成功：共 ${imported.total} 个账号，但当前 APK 缺少 ARM64 Go 核心。需安装含 libwbcore.so 的构建，才能启动 WorkBuddy。"
                                         }
                                     }
                                 }

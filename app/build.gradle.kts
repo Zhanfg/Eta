@@ -148,6 +148,7 @@ androidComponents {
 }
 
 dependencies {
+    implementation(project(":ai-runtime-api"))
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     implementation(libs.jsoup)
     implementation(libs.commons.compress)

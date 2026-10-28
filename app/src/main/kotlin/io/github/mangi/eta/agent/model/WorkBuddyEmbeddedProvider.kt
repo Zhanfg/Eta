@@ -3,7 +3,8 @@ package io.github.mangi.eta.agent.model
 import io.github.mangi.eta.agent.runtime.AgentRunController
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderSourceTypes
-import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
+import io.github.mangi.eta.data.workbuddy.WorkBuddyAiBackend
+import io.github.mangi.ai.runtime.AiSessionAction
 
 /**
  * ETA Agent -> 127.0.0.1:ephemeral -> real workbuddy2api Go core -> CodeBuddy.
@@ -21,14 +22,14 @@ internal object WorkBuddyEmbeddedProvider : AgentProviderClient {
         onEvent: (ProviderEvent) -> Unit,
     ): ProviderResponse {
         runController.throwIfCancelled()
-        return WorkBuddyEmbeddedCore.withActiveRequest { endpoint ->
-            // Core is kept alive until streaming/tools terminate or the run is
-            // cancelled. All downstream requests use the Go pool's real key.
+        return WorkBuddyAiBackend.withSession(AiSessionAction { endpoint ->
+            // The portable backend lease covers the full response lifecycle,
+            // including SSE and tool-call streaming. No cross-app auth export.
             val configuration = request.effectiveConfig.copy(
                 providerId = "eta-wb-native-loopback",
                 providerSourceType = ProviderSourceTypes.CUSTOM,
-                baseUrl = endpoint.baseUrl,
-                apiKey = endpoint.apiKey,
+                baseUrl = endpoint.baseUrl().toString(),
+                apiKey = endpoint.bearerToken(),
                 openAiEndpointMode = OpenAiEndpointMode.CHAT_COMPLETIONS,
                 authMode = "",
                 extraBodyJson = "",
@@ -41,6 +42,6 @@ internal object WorkBuddyEmbeddedProvider : AgentProviderClient {
                 runController,
                 onEvent,
             )
-        }
+        })
     }
 }
