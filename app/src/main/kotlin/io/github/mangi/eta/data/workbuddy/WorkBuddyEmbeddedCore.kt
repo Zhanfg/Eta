@@ -86,8 +86,21 @@ internal object WorkBuddyEmbeddedCore {
 
     private fun writeLocked(file: File, text: String) {
         file.parentFile?.mkdirs()
-        file.writeText(text, Charsets.UTF_8)
-        Os.chmod(file.absolutePath, 384) // 0600: Android app UID only
+        // Create with mode 0600 *before* any auth/config bytes are written.
+        // File.writeText then chmod leaves a transient permissive window.
+        val fd = Os.open(
+            file.absolutePath,
+            android.system.OsConstants.O_WRONLY or
+                android.system.OsConstants.O_CREAT or
+                android.system.OsConstants.O_TRUNC or
+                android.system.OsConstants.O_NOFOLLOW,
+            384,
+        )
+        java.io.FileOutputStream(fd).use { output ->
+            Os.chmod(file.absolutePath, 384)
+            output.write(text.toByteArray(Charsets.UTF_8))
+            output.fd.sync()
+        }
     }
 
     /**
@@ -141,8 +154,11 @@ internal object WorkBuddyEmbeddedCore {
     private fun health(endpoint: Endpoint): Boolean {
         val connection = (URL(endpoint.baseUrl.removeSuffix("/v1") + "/healthz")
             .openConnection() as HttpURLConnection)
-        connection.connectTimeout = 300
-        connection.readTimeout = 400
+        // A mobile Go subprocess may need extra time while the device is
+        // busy/thermal-throttled. This probe must not incorrectly mark a
+        // healthy process as dead due to a 300 ms startup connect timeout.
+        connection.connectTimeout = 1_000
+        connection.readTimeout = 1_000
         connection.instanceFollowRedirects = false
         return try {
             connection.requestMethod = "GET"
@@ -227,19 +243,29 @@ internal object WorkBuddyEmbeddedCore {
         }, "wb-core-output").apply { isDaemon = true; start() }
 
         val e = Endpoint("http://127.0.0.1:$port/v1", key)
-        repeat(32) {
-            if (process.isAlive && health(e)) {
+        // Monotonic time budget: per-probe network timeouts are part of
+        // startup elapsed time. The old repeat(32)*150ms estimate did not
+        // account for connect/read and could report a false 4.8s deadline.
+        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000L
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (!process.isAlive) {
+                val exit = runCatching { process.exitValue() }.getOrNull()
+                running = null
+                endpoint = null
+                throw IllegalStateException("WB Go 核心启动失败（exit=$exit）；请检查 APK 原生核心及系统权限")
+            }
+            if (health(e)) {
                 endpoint = e
                 return e
             }
-            if (!process.isAlive) throw IllegalStateException(
-                "WB Go 核心在启动期间退出（exit=${runCatching { process.exitValue() }.getOrNull()}）"
-            )
-            Thread.sleep(150)
+            Thread.sleep(250)
         }
         process.destroy()
+        runCatching { process.waitFor(2, TimeUnit.SECONDS) }
+        if (process.isAlive) process.destroyForcibly()
         running = null
-        throw IllegalStateException("WB Go 核心在 4.8 秒内未响应健康检查")
+        endpoint = null
+        throw IllegalStateException("WB Go 核心在启动期限内未响应本机健康检查")
     }
 
     /**
