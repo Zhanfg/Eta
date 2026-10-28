@@ -3,7 +3,8 @@ package io.github.mangi.eta.agent.model
 import io.github.mangi.eta.agent.runtime.AgentRunController
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderSourceTypes
-import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
+import io.github.mangi.eta.data.workbuddy.WorkBuddyAiBackend
+import io.github.mangi.ai.runtime.AiSessionAction
 
 /**
  * ETA Agent -> 127.0.0.1:ephemeral -> real workbuddy2api Go core -> CodeBuddy.
@@ -21,26 +22,26 @@ internal object WorkBuddyEmbeddedProvider : AgentProviderClient {
         onEvent: (ProviderEvent) -> Unit,
     ): ProviderResponse {
         runController.throwIfCancelled()
-        val endpoint = WorkBuddyEmbeddedCore.ensureStarted()
-        // The core speaks the standard OpenAI Chat dialect. Deliberately clear
-        // the local special-case source type; that code emits raw Tencent headers
-        // and must never be applied to a loopback Go gateway.
-        val configuration = request.effectiveConfig.copy(
-            providerId = "eta-wb-native-loopback",
-            providerSourceType = ProviderSourceTypes.CUSTOM,
-            baseUrl = endpoint.baseUrl,
-            apiKey = endpoint.apiKey,
-            openAiEndpointMode = OpenAiEndpointMode.CHAT_COMPLETIONS,
-            authMode = "",
-            extraBodyJson = "",
-            customHeaders = emptyList(),
-            customBody = emptyList(),
-            hostedWebSearchEnabled = false,
-        )
-        return OpenAiChatCompletionsProvider.complete(
-            request.copy(config = configuration),
-            runController,
-            onEvent,
-        )
+        return WorkBuddyAiBackend.withSession(AiSessionAction { endpoint ->
+            // The portable backend lease covers the full response lifecycle,
+            // including SSE and tool-call streaming. No cross-app auth export.
+            val configuration = request.effectiveConfig.copy(
+                providerId = "eta-wb-native-loopback",
+                providerSourceType = ProviderSourceTypes.CUSTOM,
+                baseUrl = endpoint.baseUrl().toString(),
+                apiKey = endpoint.bearerToken(),
+                openAiEndpointMode = OpenAiEndpointMode.CHAT_COMPLETIONS,
+                authMode = "",
+                extraBodyJson = "",
+                customHeaders = emptyList(),
+                customBody = emptyList(),
+                hostedWebSearchEnabled = false,
+            )
+            OpenAiChatCompletionsProvider.complete(
+                request.copy(config = configuration),
+                runController,
+                onEvent,
+            )
+        })
     }
 }
