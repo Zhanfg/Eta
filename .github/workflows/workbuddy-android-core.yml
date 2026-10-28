@@ -109,8 +109,16 @@ jobs:
           # Test real Go auth-file parsing after restart. The credential is fake
           # and is NEVER sent to Tencent; do not probe /v1/models after insertion.
           # Exercise the same nested account/auth bytes written by ETA native importer.
-          printf '%s\n' '{"account":{"uid":"local-byte-fixture","nickname":"Synthetic"},"auth":{"accessToken":"fixture-no-login","realm":"cn"}}' \
-            > "$RUNNER_TEMP/wb-fixture/auths/workbuddy-000.json"
+          # Five synthetic nested account/auth records, matching the schema
+          # of desktop accounts.zip. Never upload or use user-supplied tokens.
+          # Inspect only local /status; no third-party authentication request.
+          for index in 0 1 2 3 4; do
+            realm="cn"
+            if [[ "$index" == 4 ]]; then realm="global"; fi
+            printf '{"account":{"uid":"local-byte-fixture-%s","nickname":"Synthetic%s","enterpriseId":""},"auth":{"accessToken":"fixture-no-login-%s","refreshToken":"fixture-refresh-disabled-%s","expiresAt":1825000000,"domain":"example.invalid","realm":"%s"}}\n' \
+              "$index" "$index" "$index" "$index" "$realm" \
+              > "$RUNNER_TEMP/wb-fixture/auths/workbuddy-00$index.json"
+          done
           # Mobile import path explicitly restarts the native Go core.
           kill "$PID" 2>/dev/null || true
           wait "$PID" 2>/dev/null || true
@@ -121,7 +129,7 @@ jobs:
           for attempt in $(seq 1 40); do
             curl -fsS --max-time 1 -H 'Authorization: Bearer fixture-only-please-never-use-in-production' \
               http://127.0.0.1:17863/status -o "$RUNNER_TEMP/wb-fixture/status.json"
-            if python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["total"]==1' \
+            if python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["total"]==5' \
               "$RUNNER_TEMP/wb-fixture/status.json" 2>/dev/null; then
               loaded=1; break
             fi
