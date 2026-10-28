@@ -2,7 +2,7 @@ name: WorkBuddy Android Core Feasibility
 
 on:
   push:
-    branches: [feature/workbuddy-native-integration]
+    branches: [release/eta-workbuddy-mvp-v1, feature/workbuddy-native-integration]
   workflow_dispatch:
 
 permissions:
@@ -165,6 +165,19 @@ jobs:
           sha256sum app/src/main/jniLibs/arm64-v8a/libwbcore.so
       - name: Set up ETA Gradle Android toolchain
         uses: ./.github/actions/setup-build
+      - name: Compile portable AI runtime and verify host contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :ai-runtime-api:jar
+          mkdir -p "$RUNNER_TEMP/ai-api-smoke"
+          javac --release 17 -cp ai-runtime-api/build/classes/java/main \
+            -d "$RUNNER_TEMP/ai-api-smoke" \
+            ai-runtime-api/src/test/java/io/github/mangi/ai/runtime/AiBackendHostSmoke.java
+          java -ea -cp "ai-runtime-api/build/classes/java/main:$RUNNER_TEMP/ai-api-smoke" \
+            io.github.mangi.ai.runtime.AiBackendHostSmoke
+          jar tf ai-runtime-api/build/libs/ai-runtime-api.jar | grep -q 'io/github/mangi/ai/runtime/AiBackend.class'
+
       - name: Build ETA Debug APK WITH embedded Go backend
         shell: bash
         run: |
@@ -176,6 +189,14 @@ jobs:
           test -n "$APK"
           unzip -l "$APK" | grep -q 'lib/arm64-v8a/libwbcore.so'
           echo "Go upstream binary is physically embedded in this ETA APK"
+      - name: Upload reusable AI runtime API JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: eta-ai-runtime-api-java17
+          path: ai-runtime-api/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload integrated ETA Debug APK (device validation still required)
         uses: actions/upload-artifact@v4
         with:
