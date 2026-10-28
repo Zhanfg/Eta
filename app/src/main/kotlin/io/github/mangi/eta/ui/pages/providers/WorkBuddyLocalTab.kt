@@ -1,6 +1,9 @@
 package io.github.mangi.eta.ui.pages.providers
 
 import android.net.Uri
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -178,6 +181,21 @@ internal fun WorkBuddyLocalTab(
                     summary = if (WorkBuddyEmbeddedCore.isBundled())
                         "APK 已包含 Android ARM64 Go 网关；需要启动验证才代表可用"
                     else "本 APK 没有打包 Go 原生核心，无法运行完整的本地账号池",
+                )
+                EtaTextButton(
+                    text = "复制本机诊断（不含账号或令牌）",
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        if (clipboard == null) {
+                            message = "设备剪贴板服务不可用"
+                        } else {
+                            val report = WorkBuddyEmbeddedCore.diagnosticSummary()
+                            clipboard.setPrimaryClip(ClipData.newPlainText("ETA WorkBuddy 诊断", report))
+                            message = "已复制脱敏诊断。可以直接粘贴给我：不会包含 UID、Token 或文件路径。"
+                        }
+                    },
                 )
                 EtaTextButton(
                     text = if (busy) "检测中…" else "启动并验证原生后端",
