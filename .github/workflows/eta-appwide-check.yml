@@ -74,7 +74,28 @@ jobs:
             -o "$BUILD_DIR/bin/eta-workspace-bridge"
           file "$BUILD_DIR/bin/eta-workspace-bridge" | grep -qi "aarch64"
           chmod 0755 "$BUILD_DIR/bin/eta-workspace-bridge"
-          rm -rf "$BUILD_DIR/native"
+
+          # Android framework display-owner *diagnostic*, not a task executor.
+          sdkmanager --channel=3 "build-tools;36.0.0"
+          ANDROID_JAR="$SDK_ROOT/platforms/android-37/android.jar"
+          BUILD_TOOLS="$SDK_ROOT/build-tools/36.0.0"
+          test -f "$ANDROID_JAR"
+          test -x "$BUILD_TOOLS/d8"
+          mkdir -p "$RUNNER_TEMP/eta-display-classes" "$RUNNER_TEMP/eta-display-dex"
+          javac --release 17 -cp "$ANDROID_JAR" \
+            -d "$RUNNER_TEMP/eta-display-classes" \
+            modules/eta-workspace/java/io/github/mangi/eta/workspace/WorkspaceDisplayProbe.java
+          jar --create --file "$RUNNER_TEMP/eta-display-classes.jar" \
+            -C "$RUNNER_TEMP/eta-display-classes" .
+          "$BUILD_TOOLS/d8" --min-api 33 --lib "$ANDROID_JAR" \
+            --output "$RUNNER_TEMP/eta-display-dex" \
+            "$RUNNER_TEMP/eta-display-classes.jar"
+          jar --create --file "$BUILD_DIR/bin/eta-display-probe.jar" \
+            -C "$RUNNER_TEMP/eta-display-dex" classes.dex
+          unzip -l "$BUILD_DIR/bin/eta-display-probe.jar" | grep -q classes.dex
+
+          # Source is not needed on phone; binary + dex are the only diagnostics.
+          rm -rf "$BUILD_DIR/native" "$BUILD_DIR/java"
           cd "$BUILD_DIR"
           zip -q -r "$GITHUB_WORKSPACE/eta-workspace-ipc-probe-arm64.zip" .
           unzip -l "$GITHUB_WORKSPACE/eta-workspace-ipc-probe-arm64.zip" |
