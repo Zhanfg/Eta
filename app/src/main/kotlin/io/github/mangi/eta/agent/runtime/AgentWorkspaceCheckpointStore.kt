@@ -61,8 +61,13 @@ internal class AgentWorkspaceCheckpointStore(
     fun markInFlight(taskId: String, stepId: String): Boolean =
         transition(taskId, stepId, Phase.IN_FLIGHT, setOf(Phase.PREPARED))
 
+    /**
+     * Call only after reading back the actual destination state. An unknown
+     * outcome is never evidence of success without external reconciliation.
+     */
     fun markVerified(taskId: String, stepId: String): Boolean =
-        transition(taskId, stepId, Phase.VERIFIED, setOf(Phase.IN_FLIGHT))
+        transition(taskId, stepId, Phase.VERIFIED,
+            setOf(Phase.IN_FLIGHT, Phase.OUTCOME_UNKNOWN))
 
     fun markUnknown(taskId: String, stepId: String): Boolean =
         transition(taskId, stepId, Phase.OUTCOME_UNKNOWN,
