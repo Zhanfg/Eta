@@ -1,4 +1,4 @@
-# ETA Workspace Companion — KSU/Magisk 0.2.0-alpha01
+# ETA Workspace Companion — KSU/Magisk 0.2.0-alpha02
 
 **This is an IPC diagnostic preview, NOT a virtual-display/Android app automation module.**
 
@@ -10,6 +10,8 @@
 - Boot `service.sh` computes UID from the existing Android user 0 ETA package directory owner, starts the daemon when its native binary is present, and writes diagnostics under module-local `state/`. No app data is read.
 - ETA Settings exposes a **generic** display-policy probe and a **KSU/Magisk local service handshake** test. They do not start third-party apps.
 - A CI workflow compiles the native program for Linux and Android ARM64 and packages an optional diagnostic module ZIP. Host tests check UID authorization and the fail-closed protocol.
+
+The module now includes an **opt-in blank virtual-display capability probe** built as an Android DEX app_process helper. Choose the module manager's **Action** to run it. It requests a secondary trusted display for a short feasibility check, reports the display ID or denial reason, and always destroys that display. This is **not** a persistent display service, and does not open third-party apps or provide GUI control.
 
 Do **not** flash this preview expecting any GUI/display capability. The current native server is intentionally read-only and cannot control any App.
 
@@ -24,7 +26,7 @@ Do **not** flash this preview expecting any GUI/display capability. The current 
 
 ## Module ZIP
 
-CI should package the **contents** of this directory with `module.prop` at archive root and an executable `bin/eta-workspace-bridge` compiled via Android NDK. `customize.sh` assigns script and binary permissions. On boot, `service.sh` attempts a capability-only daemon. No system files are modified.
+CI should package the **contents** of this directory with `module.prop` at archive root, an executable `bin/eta-workspace-bridge` compiled via Android NDK, and `bin/eta-display-probe.jar` built using javac/D8. `customize.sh` assigns script and binary permissions. On boot, `service.sh` attempts a capability-only daemon. No system files are modified.
 
 The module manager Action runs only capability diagnostics. A successful `HELLO 1` does **not** mean secondary display support exists. The current version returns `BRIDGE_PROBE_ONLY` in ETA's Settings.
 
