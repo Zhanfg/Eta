@@ -147,21 +147,10 @@ internal fun WorkBuddyLocalTab(
                             onClick = {
                                 val uri = selectedFile
                                 if (uri != null) work {
-                                        // Stop the old Go pool BEFORE changing the vault, so
-                                        // stale, in-flight refresh snapshots cannot overwrite an
-                                        // explicitly imported newer desktop credential. A busy
-                                        // stream stops the import rather than silently killing it.
-                                        // Do not call stop() on a never-started
-                                        // core: stop also touches the old encrypted
-                                        // vault, so a stale/corrupted vault can
-                                        // prevent a fresh *offline* ZIP import.
-                                        // If a core is actually running, stop it
-                                        // first to preserve refreshed credentials.
-                                        if (WorkBuddyEmbeddedCore.isRunning()) {
-                                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.stop() }
-                                        }
                                         val imported = withContext(Dispatchers.IO) {
-                                            WorkBuddyLocalVault.importJson(context, uri)
+                                            WorkBuddyEmbeddedCore.importAccounts {
+                                                WorkBuddyLocalVault.importJson(context, uri)
+                                            }
                                         }
                                         // A successful local import is OFFLINE. Fake/expired
                                         // credentials must not cause an implicit upstream

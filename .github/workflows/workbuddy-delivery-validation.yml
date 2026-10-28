@@ -42,6 +42,8 @@ jobs:
           go-version: '1.25.x'
           cache: false
       - uses: ./.github/actions/setup-build
+      - name: Install NDK for Bionic DNS
+        run: sdkmanager 'ndk;30.0.16248370'
       - name: Test and build the exact 3.3.5 integrated APK
         run: bash scripts/build_workbuddy_mvp.sh
       - name: Upload only distributable binaries and redacted provenance

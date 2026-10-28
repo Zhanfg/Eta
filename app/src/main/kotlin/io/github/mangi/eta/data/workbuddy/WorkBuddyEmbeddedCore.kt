@@ -71,6 +71,13 @@ internal object WorkBuddyEmbeddedCore {
         return File(ctx.applicationInfo.nativeLibraryDir, "libwbcore.so").isFile
     }
 
+    /** Serialize import with startup and request leases; do not recover a never-started core. */
+    fun <T> importAccounts(import: () -> T): T = synchronized(lock) {
+        check(activeAgentRequests == 0) { "仍有 Agent 调用运行中，结束后才能重新导入订阅" }
+        if (running?.isAlive == true) stop()
+        import()
+    }
+
     fun isRunning(): Boolean = synchronized(lock) {
         val proc = running
         proc != null && proc.isAlive && endpoint != null
@@ -170,6 +177,7 @@ internal object WorkBuddyEmbeddedCore {
                     .put("expiresAt", account.expiresAt)
                     .put("domain", account.domain)
                     .put("realm", account.realm))
+                .put("device_token", account.deviceToken)
             writeLocked(File(root, "workbuddy-${index.toString().padStart(3, '0')}.json"), json.toString())
         }
         return snapshot.size
@@ -250,10 +258,12 @@ internal object WorkBuddyEmbeddedCore {
         endpoint = null
 
         val process = try {
-            ProcessBuilder(binary.absolutePath, "-config", file.absolutePath)
-                .directory(home)
-                .redirectErrorStream(true)
-                .start()
+            WorkBuddyAndroidEnvironment.configure(
+                ProcessBuilder(binary.absolutePath, "-config", file.absolutePath)
+                    .directory(home)
+                    .redirectErrorStream(true),
+                home, File(ctx.cacheDir, "workbuddy-native"),
+            ).start()
         } catch (error: Exception) {
             // Failed exec must not leave cleartext credentials indefinitely.
             // Recovery failure is surfaced rather than deleting recoverable data.

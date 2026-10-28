@@ -2,6 +2,8 @@
 
 **Status: EXPERIMENTAL / NOT RELEASED.** This is a migration record, not a claim that the requested full WorkBuddy experience works on a phone.
 
+The former CGO-disabled feasibility builds are obsolete because their pure-Go resolver does not support ordinary Android DNS. See [the Android runtime repair](WORKBUDDY_ANDROID_RUNTIME_FIX.md) for the current build and device-test requirements. Historical host/build gates below do not establish Android networking.
+
 ## Authoritative source and byte provenance
 
 Manager: `ithtelab/workbuddy-manager` (MIT), v2.9.0. The manager is FastAPI/Python with a Next.js UI. Its official release embeds the Go workbuddy2api gateway source at `upstream/`; the original Sliverkiss repository was removed. Do **not** mistake the separate 3304711297 desktop Tauri project for the Go upstream.
@@ -9,7 +11,7 @@ Manager: `ithtelab/workbuddy-manager` (MIT), v2.9.0. The manager is FastAPI/Pyth
 - Release input: `workbuddy-manager-v2.9.0.tar.gz`
 - SHA-256: `7f1a37b9bd9987c6210a41e58360e37658e71c4c305fbe85c64b25305bb7133e`
 - CI: `.github/workflows/workbuddy-android-core.yml`
-- CI stages: download and verify digest → locate bundled upstream go.mod and LICENSE → go mod verify → go test → Go Linux byte-path smoke → GOOS=android GOARCH=arm64 CGO_ENABLED=0 build → ELF header/interpreter checks → package into `lib/arm64-v8a/libwbcore.so` of ETA Debug APK.
+- CI stages: download and verify digest → locate bundled upstream go.mod and LICENSE → go mod verify → go test → Go Linux byte-path smoke → NDK/Bionic Android build with CGO enabled (`scripts/build_android_go.sh`) → ELF header/interpreter checks → package into `lib/arm64-v8a/libwbcore.so` of ETA Debug APK.
 - The Android binary is a **PIE executable with /system/bin/linker64**, despite being packed in a `.so` nativeLib directory for Android app extraction. It is started as a subprocess, never loaded with `System.loadLibrary`. The `.so` suffix is a packaging accommodation, not proof of JNI/shared-library compatibility.
 - No external WorkBuddy Manager, Docker, Python, Node.js, Termux or root is *intended* at runtime.
 
