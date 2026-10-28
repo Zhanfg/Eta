@@ -77,7 +77,13 @@ jobs:
 
           # Android framework display-owner *diagnostic*, not a task executor.
           sdkmanager --channel=3 "build-tools;36.0.0"
-          ANDROID_JAR="$SDK_ROOT/platforms/android-37/android.jar"
+          # Android 37 SDK platform directories may be android-37 or
+          # android-37.0 depending on the platform package revision.
+          if [ -f "$SDK_ROOT/platforms/android-37.0/android.jar" ]; then
+            ANDROID_JAR="$SDK_ROOT/platforms/android-37.0/android.jar"
+          else
+            ANDROID_JAR="$SDK_ROOT/platforms/android-37/android.jar"
+          fi
           BUILD_TOOLS="$SDK_ROOT/build-tools/36.0.0"
           test -f "$ANDROID_JAR"
           test -x "$BUILD_TOOLS/d8"
