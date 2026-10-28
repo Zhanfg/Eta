@@ -43,6 +43,7 @@ internal object WorkBuddyLocalVault {
         val enterpriseId: String = "",
         val nickname: String = "",
         val realmHint: String = "",
+        val deviceToken: String = "",
     ) {
         val realm: String get() = when {
             realmHint.equals("global", ignoreCase = true) -> "global"
@@ -103,6 +104,7 @@ internal object WorkBuddyLocalVault {
                 enterpriseId = field(v, "enterpriseId", "enterprise_id"),
                 nickname = field(v, "nickname", "name").take(80),
                 realmHint = field(v, "realm").take(16),
+                deviceToken = field(v, "device_token", "deviceToken"),
             )
         }
     }

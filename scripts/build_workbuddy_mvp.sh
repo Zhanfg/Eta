@@ -33,11 +33,12 @@ if (( ${#modfiles[@]} != 1 )); then
 fi
 UPSTREAM="$(dirname "${modfiles[0]}")"
 (cd "$UPSTREAM" && go mod verify && go test ./internal/... ./cmd/server/... &&
-  GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' \
-    -o "$WORK/libwbcore.so" ./cmd/server)
+  bash "$ROOT/scripts/build_android_go.sh" arm64-v8a "$WORK/libwbcore.so" ./cmd/server)
 readelf -h "$WORK/libwbcore.so" | grep -Eq 'Machine:.*AArch64'
 readelf -h "$WORK/libwbcore.so" | grep -Eq 'Type:.*DYN'
 readelf -l "$WORK/libwbcore.so" | grep -q '/system/bin/linker64'
+
+readelf -d "$WORK/libwbcore.so" | grep -E 'NEEDED.*\[libc.so\]'
 
 mkdir -p app/src/main/jniLibs/arm64-v8a
 cp "$WORK/libwbcore.so" app/src/main/jniLibs/arm64-v8a/libwbcore.so
@@ -68,6 +69,8 @@ record = {
     "application_id": "io.github.mangi.eta",
     "version_name": "3.3.5-debug",
     "native_abi": "arm64-v8a",
+    "android_dns": "bionic-cgo",
+    "tls_trust": "android-system-and-conscrypt-apex",
     "upstream_release": "workbuddy-manager-v2.9.0",
     "upstream_sha256": "7f1a37b9bd9987c6210a41e58360e37658e71c4c305fbe85c64b25305bb7133e",
     "device_validation": "pending",

@@ -129,6 +129,10 @@ jobs:
           done
           if [[ "$loaded" != 1 ]]; then echo "::error::Go core did not load imported auth bytes after restart"; exit 1; fi
           echo "PASS: Go core boot + HTTP bytes + auth guard + JSON account bytes loaded at startup"
+      - name: Set up Android NDK for Bionic DNS
+        uses: ./.github/actions/setup-build
+      - name: Install pinned NDK
+        run: sdkmanager "ndk;30.0.16248370"
       - name: Cross-compile actual Go gateway for Android arm64
         shell: bash
         run: |
@@ -136,9 +140,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/wb-native/arm64-v8a"
           (
             cd "$WB_UPSTREAM"
-            GOOS=android GOARCH=arm64 CGO_ENABLED=0 \
-              go build -trimpath -ldflags='-s -w' \
-              -o "$RUNNER_TEMP/wb-native/arm64-v8a/workbuddy2api" ./cmd/server
+            bash "$GITHUB_WORKSPACE/scripts/build_android_go.sh" arm64-v8a \
+              "$RUNNER_TEMP/wb-native/arm64-v8a/workbuddy2api" ./cmd/server
           )
           target="$RUNNER_TEMP/wb-native/arm64-v8a/workbuddy2api"
           test -s "$target"
@@ -163,8 +166,6 @@ jobs:
           cp "$RUNNER_TEMP/wb-native/arm64-v8a/workbuddy2api" \
             app/src/main/jniLibs/arm64-v8a/libwbcore.so
           sha256sum app/src/main/jniLibs/arm64-v8a/libwbcore.so
-      - name: Set up ETA Gradle Android toolchain
-        uses: ./.github/actions/setup-build
       - name: Compile portable AI runtime and verify host contract
         shell: bash
         run: |

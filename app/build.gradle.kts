@@ -29,13 +29,18 @@ require(buildMetadata == null || buildMetadata.matches(Regex("[0-9A-Za-z.-]+")))
 }
 val buildMetadataSuffix = buildMetadata?.let { "+$it" }.orEmpty()
 
+val nativeAbi = providers.gradleProperty("eta.nativeAbi").getOrElse("arm64-v8a")
+require(nativeAbi in setOf("arm64-v8a", "x86_64")) { "Unsupported native ABI" }
+
 android {
+    testBuildType = if (providers.gradleProperty("eta.runtimeTests").orNull == "true") "runtimeTest" else "debug"
     namespace = "io.github.mangi.eta"
     compileSdk = 37
     ndkVersion = libs.versions.ndk.get()
 
     defaultConfig {
         applicationId = "io.github.mangi.eta"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = 33
         targetSdk = 37
         // versionCode 规则：yyyyMMdd + 两位当日序号（01 起），发版时随 versionName 一起手动递增。
@@ -44,7 +49,7 @@ android {
 
         ndk {
             // 同时过滤本地与依赖 AAR 的原生库，确保 APK 仅包含 ARM64。
-            abiFilters += "arm64-v8a"
+            abiFilters += nativeAbi
         }
     }
 
@@ -65,6 +70,11 @@ android {
             versionNameSuffix = "-debug" + buildMetadataSuffix
             isMinifyEnabled = false
             isPseudoLocalesEnabled = true
+        }
+        create("runtimeTest") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".runtimetest"
+            matchingFallbacks += listOf("debug")
         }
         release {
             versionNameSuffix = buildMetadataSuffix
@@ -148,6 +158,8 @@ androidComponents {
 }
 
 dependencies {
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
     implementation(project(":ai-runtime-api"))
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     implementation(libs.jsoup)

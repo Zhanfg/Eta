@@ -45,3 +45,8 @@ google-services.json
 /.env.*
 /build-mvp/
 /app/src/main/jniLibs/arm64-v8a/libwbcore.so
+/app/src/runtimeTest/jniLibs/
+
+# Local Python verification cache
+__pycache__/
+*.pyc

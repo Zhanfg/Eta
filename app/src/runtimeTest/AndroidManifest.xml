@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Isolated backend fixture app; do not initialize unrelated production services. -->
+    <application android:name="android.app.Application" tools:replace="android:name" />
+</manifest>
