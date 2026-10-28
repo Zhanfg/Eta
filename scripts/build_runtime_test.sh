@@ -13,9 +13,10 @@ OUT="$ROOT/app/src/runtimeTest/jniLibs/x86_64"
 mkdir -p "$OUT"
 (cd "$(dirname "${modules[0]}")" && bash "$ROOT/scripts/build_android_go.sh" x86_64 "$OUT/libwbcore.so" ./cmd/server)
 bash "$ROOT/scripts/build_android_go.sh" x86_64 "$OUT/libwbprobe.so" "$ROOT/scripts/runtime-probe/main.go"
-# Keep a test-only copy of the former build mode to reproduce the DNS failure.
-CGO_ENABLED=0 GOOS=android GOARCH=amd64 go build -trimpath \
-  -o "$OUT/libwbprobe_legacy.so" "$ROOT/scripts/runtime-probe/main.go"
+# Android/amd64 requires external linking. Force the same pure-Go DNS resolver
+# used by the former CGO-disabled ARM64 core while retaining x86_64 linkage.
+bash "$ROOT/scripts/build_android_go.sh" x86_64 "$OUT/libwbprobe_legacy.so" \
+  "$ROOT/scripts/runtime-probe/main.go" -tags netgo
 cd "$ROOT"
 ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g \
   -Pkotlin.compiler.execution.strategy=in-process -Peta.nativeAbi=x86_64 -Peta.runtimeTests=true \

@@ -16,7 +16,7 @@ The Android 35 emulator workflow checks:
 
 1. Five-account ZIP import, actual Android Keystore encryption/readback, native Go /status count, stop/restart and private snapshot cleanup without model requests.
 2. Import rejected while an Agent request lease is held.
-3. The legacy pure-Go test executable reproduces failed Android DNS.
+3. A netgo-tagged probe forces the former core's pure-Go DNS resolver and reproduces failed Android DNS. Android/x86_64 requires external linking, so this comparison retains cgo linkage while explicitly selecting the legacy resolver.
 4. The NDK/Bionic executable resolves example.com and verifies its public HTTPS certificate using Android system roots. No account or subscription is used in this check.
 
 Build commands:

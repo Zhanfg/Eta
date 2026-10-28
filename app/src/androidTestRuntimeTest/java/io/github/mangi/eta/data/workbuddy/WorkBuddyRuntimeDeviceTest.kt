@@ -108,10 +108,11 @@ class WorkBuddyRuntimeDeviceTest {
         } finally { process.destroyForcibly() }
     }
 
-    @Test fun legacyPureGoBuildReproducesAndroidDnsFailure() {
+    @Test fun legacyPureGoResolverReproducesAndroidDnsFailure() {
         val (exit, report) = runProbe("libwbprobe_legacy.so")
         assertEquals(1, exit)
-        assertFalse(report.getBoolean("cgo"))
+        // x86_64 needs cgo linkage; netgo selects the former core's DNS resolver.
+        assertTrue(report.getBoolean("cgo"))
         assertFalse("Legacy build unexpectedly resolved through Android DNS", report.getBoolean("dns"))
     }
 
