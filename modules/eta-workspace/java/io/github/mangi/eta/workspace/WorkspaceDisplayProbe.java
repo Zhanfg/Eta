@@ -8,6 +8,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Build;
 import android.view.Display;
 
 import java.lang.reflect.Method;
@@ -81,7 +82,7 @@ public final class WorkspaceDisplayProbe {
                     FLAG_DESTROY_CONTENT |
                     FLAG_TRUSTED |
                     FLAG_OWN_DISPLAY_GROUP |
-                    FLAG_OWN_FOCUS;
+                    (Build.VERSION.SDK_INT >= 34 ? FLAG_OWN_FOCUS : 0);
             display = manager.createVirtualDisplay(
                     "ETA-Workspace-Feasibility",
                     WIDTH, HEIGHT, DENSITY, imageReader.getSurface(), flags
@@ -111,6 +112,9 @@ public final class WorkspaceDisplayProbe {
             if (imageReader != null) imageReader.close();
             if (captureThread != null) captureThread.quitSafely();
             System.out.println("RESULT code=PROBE_CLEANED_UP");
+            // app_process otherwise may remain alive due to Binder background
+            // threads after this one-shot diagnostic returns.
+            System.exit(0);
         }
     }
 }
