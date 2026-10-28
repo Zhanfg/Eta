@@ -133,7 +133,11 @@ internal fun ModelProviderDetailScreen(
 
     val initial = provider ?: draft!!
     val isNew = provider == null
-    var currentTab by remember { mutableIntStateOf(0) }
+    // Opening the on-device WorkBuddy provider should show the import screen,
+    // not an unrelated provider configuration panel.
+    var currentTab by remember(initial.id) {
+        mutableIntStateOf(if (initial.id == BuiltinProviders.WORKBUDDY_LOCAL_ID) 2 else 0)
+    }
     var configDraft by rememberSaveable(
         initial.id,
         stateSaver = ProviderConfigDraftSaver,
@@ -152,7 +156,11 @@ internal fun ModelProviderDetailScreen(
             if (!isNew) {
                 TabRow(
                     tabs = listOf(context.getString(R.string.page_configuration_d7d7ce), context.getString(R.string.page_model_98fd0c)) +
-                        if (initial.id == BuiltinProviders.WORKBUDDY_ID || initial.id == BuiltinProviders.WORKBUDDY_LOCAL_ID) listOf("本地账号 / WorkBuddy") else emptyList(),
+                        when (initial.id) {
+                            BuiltinProviders.WORKBUDDY_ID -> listOf("远程 Manager（需服务器）")
+                            BuiltinProviders.WORKBUDDY_LOCAL_ID -> listOf("本机导入 ZIP / JSON")
+                            else -> emptyList()
+                        },
                     selectedTabIndex = currentTab,
                     onTabSelected = { currentTab = it },
                     modifier = Modifier.padding(
