@@ -34,3 +34,14 @@ google-services.json
 
 # 外部源码参考，仅供阅读，不参与当前仓库版本管理
 /reference/
+
+# WorkBuddy exports and local runtime data must never enter Git.
+/accounts.zip
+**/accounts.zip
+**/workbuddy-accounts*.json
+**/workbuddy-accounts*.bin
+/private-test-data/
+/.env
+/.env.*
+/build-mvp/
+/app/src/main/jniLibs/arm64-v8a/libwbcore.so

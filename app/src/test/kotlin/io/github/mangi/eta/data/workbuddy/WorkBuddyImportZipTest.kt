@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -39,6 +40,32 @@ class WorkBuddyImportZipTest {
             val src = String(it)
             org.json.JSONObject(src).getJSONObject("account").getString("uid")
         })
+    }
+
+    @Test fun importsFiveSyntheticDesktopAccountsWithoutAnOnlineAccount() {
+        // Generated in memory: never use a real accounts.zip or personal tokens.
+        val entries = (1..5).map { index ->
+            val account = org.json.JSONObject()
+                .put("uid", "synthetic-user-0000" + index)
+                .put("nickname", "Fixture " + index)
+            val auth = org.json.JSONObject()
+                .put("accessToken", "fixture-only-invalid-access-" + index)
+                .put("refreshToken", "fixture-only-invalid-refresh-" + index)
+                .put("realm", "cn")
+            "accounts/workbuddy-fixture-" + index + ".json" to
+                org.json.JSONObject().put("account", account).put("auth", auth).toString()
+        }.toTypedArray()
+        val documents = WorkBuddyAccountImport.readImportDocumentsBytes(archive(*entries))
+        assertEquals(5, documents.size)
+        val previews = documents.map { WorkBuddyAccountImport.parsePreview(it) }
+        assertEquals(5, previews.sumOf { it.count })
+        assertEquals(5, previews.flatMap { it.accounts }.map { it.account }.distinct().size)
+        val display = previews.toString()
+        assertFalse(display.contains("fixture-only-invalid-access"))
+        assertFalse(display.contains("fixture-only-invalid-refresh"))
+        assertFalse(display.contains("synthetic-user-0000"))
+        // This proves only local ZIP parsing/preview, not Keystore persistence,
+        // process startup, account entitlement or real model availability.
     }
 
     @Test fun zipTraversalRejectedBeforeAnyExtraction() {
