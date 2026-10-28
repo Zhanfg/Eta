@@ -42,6 +42,16 @@ jobs:
           test ! -e modules/eta-workspace/sepolicy.rule
           test ! -d modules/eta-workspace/system
 
+      - name: Compile host bridge and run peer-credential smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcc -std=c11 -O2 -Wall -Wextra -Werror -pedantic \
+            modules/eta-workspace/native/eta_workspace_bridge.c \
+            -o /tmp/eta-workspace-bridge-host
+          sudo python3 scripts/test_eta_workspace_bridge_native.py \
+            /tmp/eta-workspace-bridge-host
+
       - name: Configure standard ETA Android toolchain
         uses: ./.github/actions/setup-build
 
