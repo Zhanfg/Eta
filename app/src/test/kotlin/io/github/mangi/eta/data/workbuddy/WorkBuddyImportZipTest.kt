@@ -41,6 +41,40 @@ class WorkBuddyImportZipTest {
         })
     }
 
+    @Test fun fiveAccountDesktopExportWithNestedAuthAndFutureExpiryImportsOffline() {
+        // Synthetic metadata-only contract matching a five-file computer export.
+        // Never store a user-supplied archive or any real access/refresh token in CI.
+        val timestamp = 1_825_000_000L
+        val fixture = (1..5).map { index ->
+            "workbuddy-synthetic-$index.json" to """
+                {
+                  "account": {
+                    "uid": "synthetic-account-uuid-$index",
+                    "nickname": "OfflineFixture$index",
+                    "enterpriseId": ""
+                  },
+                  "auth": {
+                    "accessToken": "NOT_A_REAL_ACCESS_TOKEN_$index",
+                    "refreshToken": "NOT_A_REAL_REFRESH_TOKEN_$index",
+                    "expiresAt": $timestamp,
+                    "domain": "example.invalid",
+                    "realm": "${if (index == 5) "global" else "cn"}"
+                  }
+                }
+            """.trimIndent()
+        }.toTypedArray()
+        val documents = WorkBuddyAccountImport.readImportDocumentsBytes(archive(*fixture))
+        assertEquals(5, documents.size)
+        val previews = documents.flatMap { WorkBuddyAccountImport.parsePreview(it).accounts }
+        assertEquals(5, previews.size)
+        assertEquals(5, previews.map { it.account }.toSet().size)
+        assertEquals("global", previews.last().realm)
+        assertEquals("cn", previews.first().realm)
+        // Preview never returns bearer or refresh token data.
+        assertEquals(false, previews.toString().contains("NOT_A_REAL_ACCESS_TOKEN"))
+        assertEquals(false, previews.toString().contains("NOT_A_REAL_REFRESH_TOKEN"))
+    }
+
     @Test fun zipTraversalRejectedBeforeAnyExtraction() {
         val bytes = archive("../workbuddy-evil.json" to """{"uid":"user1","accessToken":"test"}""")
         assertThrows(IllegalArgumentException::class.java) {
