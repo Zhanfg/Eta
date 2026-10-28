@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-          ref: 4a0fdfc659b8650353fb8828109529a4157eba4f
+          ref: 1f33c90801c32ef438bedb7f6acd9528983a6719
       - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
@@ -188,7 +188,7 @@ jobs:
         run: |
           set -euo pipefail
           ./gradlew --no-daemon --no-configuration-cache \
-            "-Peta.buildMetadata=${GITHUB_SHA::7}" \
+            "-Peta.buildMetadata=1f33c90" \
             :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
           APK=$(find app/build/outputs/apk/debug -name '*.apk' -print -quit)
           test -n "$APK"
@@ -217,7 +217,7 @@ jobs:
       - name: Upload integrated ETA Debug APK (device validation still required)
         uses: actions/upload-artifact@v4
         with:
-          name: eta-workbuddy-3.3.5-fixed-apk
+          name: eta-workbuddy-3.3.5-import-hotfix-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
