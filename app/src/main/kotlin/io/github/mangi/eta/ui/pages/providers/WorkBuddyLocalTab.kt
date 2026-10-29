@@ -209,10 +209,26 @@ internal fun WorkBuddyLocalTab(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     onClick = {
                         work {
-                            val core = withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.ensureStarted() }
-                            backendStatus = "本地网关运行中"
-                            coreSummary = WorkBuddyCoreDashboard.load()
-                            message = "Go 账号池已启动；状态与积分统计直接来自后端。" 
+                            withContext(Dispatchers.IO) { WorkBuddyEmbeddedCore.ensureStarted() }
+                            val status = WorkBuddyCoreDashboard.load()
+                            val importedCount = withContext(Dispatchers.IO) {
+                                WorkBuddyLocalVault.summaries().size
+                            }
+                            coreSummary = status
+                            when {
+                                status.total != importedCount -> {
+                                    backendStatus = "账号池载入不一致"
+                                    message = "Go 核心已启动，但账号池载入 ${status.total}/${importedCount}。这属于凭据格式或账号目录问题，不能当作导入成功或正常调用。请复制本机诊断。"
+                                }
+                                status.healthy == 0 -> {
+                                    backendStatus = "账号已加载，尚无可用授权"
+                                    message = "Go 已加载 ${status.total} 个账号，但当前健康账号为 0。请检查 Token 有效期、上游授权/额度或网络，不能只用 /healthz 判断调用可用。"
+                                }
+                                else -> {
+                                    backendStatus = "账号池健康 ${status.healthy}/${status.total}"
+                                    message = "Go 核心已启动，账号数与本机加密库一致；当前 ${status.healthy} 个账号可用。请继续进行模型同步与真实 SSE 验证。"
+                                }
+                            }
                         }
                     },
                 )
