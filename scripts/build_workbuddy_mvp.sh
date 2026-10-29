@@ -3,8 +3,8 @@
 # No accounts.zip or tokens are needed and must never be supplied to CI.
 set -euo pipefail
 
-RELEASE_URL="https://github.com/ithtelab/workbuddy-manager/releases/download/v2.9.0/workbuddy-manager-v2.9.0.tar.gz"
-RELEASE_SHA256="7f1a37b9bd9987c6210a41e58360e37658e71c4c305fbe85c64b25305bb7133e"
+RELEASE_URL="https://github.com/ithtelab/workbuddy-manager/releases/download/v2.11.1/workbuddy-manager-v2.11.1.tar.gz"
+RELEASE_SHA256="33a2dbdd8cba6846747d9d6c5adefc054514f33e3e6529e10f529c0e459181d3"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 for command in curl sha256sum tar go java javac python3 file readelf; do
