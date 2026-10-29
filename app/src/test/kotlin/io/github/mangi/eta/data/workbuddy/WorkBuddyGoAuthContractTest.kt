@@ -33,6 +33,20 @@ class WorkBuddyGoAuthContractTest {
         assertFalse(outgoing.toString().contains("older-fake"))
     }
 
+    @Test fun importerPersistsFullDocumentForOneAccount() {
+        val raw = """{
+          "account":{"uid":"member-42","nickname":"Local","enterpriseId":"e7","newField":"kept"},
+          "auth":{"accessToken":"fake-token","refreshToken":"fake-refresh","realm":"cn",
+            "expiresAt":1980000000,"domain":"codebuddy.cn","futureAuthFlag":true}
+        }"""
+        val parsed = WorkBuddyLocalVault.parse(raw.toByteArray(Charsets.UTF_8))
+        assertEquals(1, parsed.size)
+        assertTrue(parsed.single().sourceJson.contains("futureAuthFlag"))
+        val goDocument = WorkBuddyEmbeddedCore.createCoreAuthDocument(parsed.single())
+        assertTrue(goDocument.getJSONObject("auth").getBoolean("futureAuthFlag"))
+        assertEquals("kept", goDocument.getJSONObject("account").getString("newField"))
+    }
+
     @Test fun oldVaultWithoutRawDocumentStillCreatesCompatibleAuthEnvelope() {
         val old = WorkBuddyLocalVault.Account(
             uid = "old-uid", accessToken = "synthetic", refreshToken = "synthetic-refresh",
