@@ -18,6 +18,8 @@ import io.github.mangi.eta.data.repository.AppearanceSettingsRepository
 import io.github.mangi.eta.data.repository.McpServerRepository
 import io.github.mangi.eta.data.repository.LinuxEnvironmentSettingsRepository
 import io.github.mangi.eta.data.repository.ProviderRepository
+import io.github.mangi.eta.data.workbuddy.WorkBuddyLocalVault
+import io.github.mangi.eta.data.workbuddy.WorkBuddyEmbeddedCore
 import io.github.mangi.eta.ui.app.PredictiveBackController
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
@@ -47,6 +49,13 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
     override fun onCreate() {
         super.onCreate()
         Prefs.initLocal(this)
+        WorkBuddyLocalVault.init(this)
+        WorkBuddyEmbeddedCore.init(this)
+        // Restore refreshed Go auth files before the next app-driven core start.
+        // Failure must not abort ETA's Application startup or leak credentials.
+        applicationScope.launch {
+            runCatching { WorkBuddyEmbeddedCore.recoverAfterUnexpectedExit() }
+        }
         if (!AppProcessPolicy.shouldInitializeFullRuntime(Application.getProcessName(), packageName)) {
             return
         }

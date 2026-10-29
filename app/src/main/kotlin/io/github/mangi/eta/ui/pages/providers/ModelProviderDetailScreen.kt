@@ -42,6 +42,7 @@ import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.withId
 import io.github.mangi.eta.data.repository.ProviderRepository
+import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.repository.RemoteModelFetcher
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
 import io.github.mangi.eta.ui.components.EtaCard
@@ -132,7 +133,11 @@ internal fun ModelProviderDetailScreen(
 
     val initial = provider ?: draft!!
     val isNew = provider == null
-    var currentTab by remember { mutableIntStateOf(0) }
+    // Opening the on-device WorkBuddy provider should show the import screen,
+    // not an unrelated provider configuration panel.
+    var currentTab by remember(initial.id) {
+        mutableIntStateOf(if (initial.id == BuiltinProviders.WORKBUDDY_LOCAL_ID) 2 else 0)
+    }
     var configDraft by rememberSaveable(
         initial.id,
         stateSaver = ProviderConfigDraftSaver,
@@ -150,7 +155,12 @@ internal fun ModelProviderDetailScreen(
         ) {
             if (!isNew) {
                 TabRow(
-                    tabs = listOf(context.getString(R.string.page_configuration_d7d7ce), context.getString(R.string.page_model_98fd0c)),
+                    tabs = listOf(context.getString(R.string.page_configuration_d7d7ce), context.getString(R.string.page_model_98fd0c)) +
+                        when (initial.id) {
+                            BuiltinProviders.WORKBUDDY_ID -> listOf("远程 Manager（需服务器）")
+                            BuiltinProviders.WORKBUDDY_LOCAL_ID -> listOf("本机导入 ZIP / JSON")
+                            else -> emptyList()
+                        },
                     selectedTabIndex = currentTab,
                     onTabSelected = { currentTab = it },
                     modifier = Modifier.padding(
@@ -179,6 +189,20 @@ internal fun ModelProviderDetailScreen(
                             scrollBehavior = scrollBehavior,
                             contentSidePadding = sidePadding,
                         )
+                    }
+                    2 -> if (!isNew) {
+                        when (initial.id) {
+                            BuiltinProviders.WORKBUDDY_ID -> WorkBuddyNativeTab(
+                                provider = initial,
+                                scrollBehavior = scrollBehavior,
+                                contentSidePadding = sidePadding,
+                            )
+                            BuiltinProviders.WORKBUDDY_LOCAL_ID -> WorkBuddyLocalTab(
+                                provider = initial,
+                                scrollBehavior = scrollBehavior,
+                                contentSidePadding = sidePadding,
+                            )
+                        }
                     }
                 }
             }

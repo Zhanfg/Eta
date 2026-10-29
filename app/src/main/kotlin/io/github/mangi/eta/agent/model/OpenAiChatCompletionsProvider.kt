@@ -65,9 +65,24 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
             requestJson.optJSONArray("messages")?.let(ChatToolCallHistory::referencedIds).orEmpty()
         val requestBody = requestJson.toString().toRequestBody(JSON_MEDIA_TYPE)
 
+        val effectiveHeaders = if (config.providerSourceType == ProviderSourceTypes.WORKBUDDY_LOCAL) {
+            require(url.startsWith("https://copilot.tencent.com/v2/") ||
+                url.startsWith("https://www.workbuddy.ai/v2/")) {
+                "本地账号只能访问 CodeBuddy 官方 HTTPS 端点"
+            }
+            val origin = if (url.startsWith("https://www.workbuddy.ai/")) {
+                "https://www.workbuddy.ai"
+            } else "https://www.codebuddy.cn"
+            headers.newBuilder()
+                .set("Origin", origin)
+                .set("Referer", "$origin/")
+                .set("User-Agent", "CLI/2.63.2 CodeBuddy/2.63.2")
+                .set("Accept", "application/json, text/plain, */*")
+                .build()
+        } else headers
         val httpRequest = Request.Builder()
             .url(url)
-            .headers(headers)
+            .headers(effectiveHeaders)
             .post(requestBody)
             .build()
 
@@ -116,6 +131,24 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                 mergeExtraBody(request, config.extraBodyJson)
                 RequestBodyMerge.mergeCustomBody(request, config.customBody)
                 ProviderReasoning.applyOpenAiCompatibleRequest(request, config)
+                // OpenAI-compatible gateways (including workbuddy2api) can
+                // reject tool_choice=auto with an empty tools array. Do not
+                // send these two fields when this Agent turn has no tools.
+                if (tools.length() == 0) {
+                    request.remove("tools")
+                    request.remove("tool_choice")
+                }
+                if (sourceType == ProviderSourceTypes.WORKBUDDY_LOCAL) {
+                    // Tencent's /v2/chat/completions only accepts streaming Chat format.
+                    // No OpenAI-specific stream_options. The original Agent loop still
+                    // handles tool_calls and streaming SSE.
+                    request.remove("stream_options")
+                    request.put("stream", true)
+                    if (tools.length() == 0) {
+                        request.remove("tool_choice")
+                        request.remove("tools")
+                    }
+                }
                 if (config.authMode == ProviderAuthModes.XAI_GROK) {
                     // 代理按请求头路由模型，正文必须与同一配置一致，并保持订阅所需的流式调用。
                     request.put("model", config.model)

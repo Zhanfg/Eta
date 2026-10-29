@@ -87,6 +87,8 @@ class ProviderComponentsTest {
             ProviderSourceTypes.STEPFUN to R.drawable.provider_logo_stepfun,
             ProviderSourceTypes.SILICONFLOW to R.drawable.provider_logo_siliconflow,
             ProviderSourceTypes.OPENROUTER to R.drawable.provider_logo_openrouter,
+            ProviderSourceTypes.WORKBUDDY to R.drawable.provider_logo_workbuddy,
+            ProviderSourceTypes.WORKBUDDY_LOCAL to R.drawable.provider_logo_workbuddy_local,
         )
 
         expected.forEach { (sourceType, logo) ->
