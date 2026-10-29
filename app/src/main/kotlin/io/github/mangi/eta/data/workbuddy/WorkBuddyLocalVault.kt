@@ -43,6 +43,13 @@ internal object WorkBuddyLocalVault {
         val enterpriseId: String = "",
         val nickname: String = "",
         val realmHint: String = "",
+        /**
+         * The complete original per-account JSON document, encrypted inside
+         * this Keystore vault. Subscriptions may carry auth metadata that the
+         * current ETA version does not understand. Never throw it away.
+         * Default preserves backward compatibility with old vault snapshots.
+         */
+        val sourceJson: String = "",
     ) {
         val realm: String get() = when {
             realmHint.equals("global", ignoreCase = true) -> "global"
@@ -103,6 +110,7 @@ internal object WorkBuddyLocalVault {
                 enterpriseId = field(v, "enterpriseId", "enterprise_id"),
                 nickname = field(v, "nickname", "name").take(80),
                 realmHint = field(v, "realm").take(16),
+                sourceJson = v.toString(),
             )
         }
     }
@@ -126,6 +134,9 @@ internal object WorkBuddyLocalVault {
             init(Cipher.ENCRYPT_MODE, key())
         }
         val plaintext = codec.encodeToString(accounts).toByteArray()
+        require(plaintext.size <= LIMIT) {
+            "本地加密账号库达到安全容量上限，导入已取消且未覆盖现有账号"
+        }
         val encoded = cipher.iv + cipher.doFinal(plaintext)
         // AtomicFile fsyncs the new encrypted snapshot before swapping it
         // into place. Runtime and encrypted environment have separate lifetimes.
