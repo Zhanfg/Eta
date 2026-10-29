@@ -80,7 +80,7 @@ internal object WorkBuddyLocalVault {
     private fun JsonObject.str(name: String): String = (this[name] as? JsonPrimitive)?.content.orEmpty()
     private fun JsonObject.num(name: String): Long = str(name).toLongOrNull() ?: 0
 
-    private fun parse(bytes: ByteArray): List<Account> {
+    internal fun parse(bytes: ByteArray): List<Account> {
         WorkBuddyAccountImport.parsePreview(bytes)
         val value = codec.parseToJsonElement(bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF"))
         val sources = when (value) {
