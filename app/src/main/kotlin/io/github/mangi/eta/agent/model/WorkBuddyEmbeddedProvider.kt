@@ -5,6 +5,8 @@ import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.data.workbuddy.WorkBuddyAiBackend
 import io.github.mangi.ai.runtime.AiSessionAction
+import java.util.UUID
+import org.json.JSONObject
 
 /**
  * ETA Agent -> 127.0.0.1:ephemeral -> real workbuddy2api Go core -> CodeBuddy.
@@ -15,6 +17,12 @@ import io.github.mangi.ai.runtime.AiSessionAction
 internal object WorkBuddyEmbeddedProvider : AgentProviderClient {
     override val id: String = "workbuddy_embedded_go"
     override val capabilities = OpenAiChatCompletionsProvider.capabilities
+
+    // WorkBuddy Go sticky pool recognizes prompt_cache_key. Preserve a single
+    // account binding across SSE + subsequent tool-result continuation turns.
+    // Hash the ETA-local session identifier instead of exposing it upstream.
+    internal fun poolSessionKey(sessionId: String): String =
+        UUID.nameUUIDFromBytes(("eta-workbuddy:" + sessionId).toByteArray(Charsets.UTF_8)).toString()
 
     override fun complete(
         request: ProviderRequest,
@@ -32,7 +40,9 @@ internal object WorkBuddyEmbeddedProvider : AgentProviderClient {
                 apiKey = endpoint.bearerToken(),
                 openAiEndpointMode = OpenAiEndpointMode.CHAT_COMPLETIONS,
                 authMode = "",
-                extraBodyJson = "",
+                extraBodyJson = JSONObject()
+                    .put("prompt_cache_key", poolSessionKey(request.sessionId))
+                    .toString(),
                 customHeaders = emptyList(),
                 customBody = emptyList(),
                 hostedWebSearchEnabled = false,
