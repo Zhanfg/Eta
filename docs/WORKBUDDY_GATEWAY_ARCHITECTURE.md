@@ -66,6 +66,14 @@ A passing gate cannot be substituted for a later one. Do not label a release
    SHA256 checked against official GitHub release) with no checksum bypass.
 4. Existing native tests are **host-side only**. Keep Android process execution
    explicitly unverified until an emulator/phone actually launches libwbcore.so.
+5. ETA had not passed its Agent session identity to the Go gateway. Native
+   workbuddy2api uses conversation keys / `prompt_cache_key` for sticky pool
+   routing across a tool loop. The embedded Provider now hashes the ETA session
+   ID into a stable `prompt_cache_key` per conversation (never sending raw
+   local session IDs to the Go pool).
+6. An empty `tools: []` combined with `tool_choice: auto` can be invalid for
+   an OpenAI-compatible gateway. The JSON builder now omits both keys when an
+   Agent turn declares zero tools, with regression coverage.
 
 ## Troubleshooting without credential disclosure
 
