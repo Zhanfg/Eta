@@ -12,11 +12,22 @@ import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OpenAiChatCompletionsProviderTest {
+    @Test
+    fun emptyToolListDoesNotEmitAutoToolChoiceToWorkBuddyGateway() {
+        val empty = providerRequest("http://127.0.0.1:8765/v1")
+        val json = OpenAiChatCompletionsProvider.buildRequestJson(
+            empty.config, empty.messages, JSONArray()
+        )
+        assertFalse(json.has("tools"))
+        assertFalse(json.has("tool_choice"))
+    }
+
     @Test
     fun thinkingStreamsBeforeDoneAndClosesBeforeTheUsageTail() {
         val firstDelta = CountDownLatch(1)
