@@ -35,10 +35,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/wb-release"
           curl --fail --location --retry 3 --silent --show-error \
-            https://github.com/ithtelab/workbuddy-manager/releases/download/v2.9.0/workbuddy-manager-v2.9.0.tar.gz \
+            https://github.com/ithtelab/workbuddy-manager/releases/download/v2.11.1/workbuddy-manager-v2.11.1.tar.gz \
             -o "$RUNNER_TEMP/wb-release/release.tar.gz"
           printf '%s  %s\n' \
-            '7f1a37b9bd9987c6210a41e58360e37658e71c4c305fbe85c64b25305bb7133e' \
+            '33a2dbdd8cba6846747d9d6c5adefc054514f33e3e6529e10f529c0e459181d3' \
             "$RUNNER_TEMP/wb-release/release.tar.gz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/wb-release/unpack"
           tar --no-same-owner -xzf "$RUNNER_TEMP/wb-release/release.tar.gz" -C "$RUNNER_TEMP/wb-release/unpack"
