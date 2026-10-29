@@ -131,6 +131,13 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                 mergeExtraBody(request, config.extraBodyJson)
                 RequestBodyMerge.mergeCustomBody(request, config.customBody)
                 ProviderReasoning.applyOpenAiCompatibleRequest(request, config)
+                // OpenAI-compatible gateways (including workbuddy2api) can
+                // reject tool_choice=auto with an empty tools array. Do not
+                // send these two fields when this Agent turn has no tools.
+                if (tools.length() == 0) {
+                    request.remove("tools")
+                    request.remove("tool_choice")
+                }
                 if (sourceType == ProviderSourceTypes.WORKBUDDY_LOCAL) {
                     // Tencent's /v2/chat/completions only accepts streaming Chat format.
                     // No OpenAI-specific stream_options. The original Agent loop still
