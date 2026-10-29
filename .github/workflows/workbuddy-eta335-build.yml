@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-          ref: 28ed8f889ff11a77de79ecb0944777ddba3289b7
+          ref: fe60cb81848529894bf3704a98223815ee3cd554
       - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
@@ -188,7 +188,7 @@ jobs:
         run: |
           set -euo pipefail
           ./gradlew --no-daemon --no-configuration-cache \
-            "-Peta.buildMetadata=28ed8f8" \
+            "-Peta.buildMetadata=fe60cb8" \
             :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
           APK=$(find app/build/outputs/apk/debug -name '*.apk' -print -quit)
           test -n "$APK"
